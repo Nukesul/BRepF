@@ -38,12 +38,12 @@ const Admin = () => {
       try {
         const token = localStorage.getItem("token");
         const [branchesRes, categoriesRes, subCategoriesRes, productsRes, discountsRes, storiesRes] = await Promise.all([
-          fetch("http://localhost:5000/branches", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("http://localhost:5000/categories", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("http://localhost:5000/subcategories", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("http://localhost:5000/products", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("http://localhost:5000/discounts", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("http://localhost:5000/stories", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/branches", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/categories", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/subcategories", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/products", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/discounts", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/stories", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
         if (!branchesRes.ok) throw new Error("Ошибка загрузки филиалов");
@@ -160,7 +160,7 @@ const Admin = () => {
   const resetDiscount = () => setDiscount({ productId: "", discountPercent: "" });
   const resetStory = () => setStory({ image: null });
 
-  const handleProductSubmit = (e) => handleSubmit(e, "http://localhost:5000/products", product, setProducts, products, resetProduct, true);
+  const handleProductSubmit = (e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/products", product, setProducts, products, resetProduct, true);
 
   const isPizzaCategory = () => {
     const selectedCategory = categories.find((c) => c.id === product.categoryId);
@@ -342,7 +342,7 @@ const Admin = () => {
                     <div className="flex items-center space-x-4">
                       {p.image && (
                         <img
-                          src={`http://localhost:5000/uploads/${p.image}`}
+                          src={`https://nukesul-brepb-651f.twc1.net/uploads/${p.image}`}
                           alt={p.name}
                           className="w-16 h-16 object-cover rounded-full"
                         />
@@ -367,7 +367,7 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("http://localhost:5000/products", p.id, setProducts, products)}
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/products", p.id, setProducts, products)}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -384,7 +384,7 @@ const Admin = () => {
         {activeTab === "branches" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление филиалами</h2>
-            <form onSubmit={(e) => handleSubmit(e, "http://localhost:5000/branches", branch, setBranches, branches, resetBranch)} className="space-y-6">
+            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/branches", branch, setBranches, branches, resetBranch)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
@@ -439,7 +439,7 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("http://localhost:5000/branches", b.id, setBranches, branches)}
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/branches", b.id, setBranches, branches)}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -456,7 +456,7 @@ const Admin = () => {
         {activeTab === "categories" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление категориями</h2>
-            <form onSubmit={(e) => handleSubmit(e, "http://localhost:5000/categories", category, setCategories, categories, resetCategory)} className="space-y-6">
+            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/categories", category, setCategories, categories, resetCategory)} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
                 <input
@@ -489,7 +489,7 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("http://localhost:5000/categories", c.id, setCategories, categories)}
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/categories", c.id, setCategories, categories)}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -507,7 +507,7 @@ const Admin = () => {
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление подкатегориями</h2>
             <form
-              onSubmit={(e) => handleSubmit(e, "http://localhost:5000/subcategories", subCategory, setSubCategories, subCategories, resetSubCategory)}
+              onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/subcategories", subCategory, setSubCategories, subCategories, resetSubCategory)}
               className="space-y-6"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -561,7 +561,7 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("http://localhost:5000/subcategories", sc.id, setSubCategories, subCategories)}
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/subcategories", sc.id, setSubCategories, subCategories)}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -578,7 +578,7 @@ const Admin = () => {
         {activeTab === "discounts" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление скидками</h2>
-            <form onSubmit={(e) => handleSubmit(e, "http://localhost:5000/discounts", discount, setDiscounts, discounts, resetDiscount)} className="space-y-6">
+            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/discounts", discount, setDiscounts, discounts, resetDiscount)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Продукт</label>
@@ -632,7 +632,7 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("http://localhost:5000/discounts", d.id, setDiscounts, discounts)}
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/discounts", d.id, setDiscounts, discounts)}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -649,7 +649,7 @@ const Admin = () => {
         {activeTab === "stories" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление историями</h2>
-            <form onSubmit={(e) => handleSubmit(e, "http://localhost:5000/stories", story, setStories, stories, resetStory, true)} className="space-y-6">
+            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/stories", story, setStories, stories, resetStory, true)} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Изображение</label>
                 <input
@@ -674,7 +674,7 @@ const Admin = () => {
                 {stories.map((s) => (
                   <div key={s.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <img
-                      src={`http://localhost:5000/uploads/${s.image}`}
+                      src={`https:nukesul-brepb-651f.twc1.net/uploads/${s.image}`}
                       alt="Story"
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
@@ -686,7 +686,7 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("http://localhost:5000/stories", s.id, setStories, stories)}
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/stories", s.id, setStories, stories)}
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить

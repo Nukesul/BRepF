@@ -12,7 +12,7 @@ const Login = () => {
     e.preventDefault();
     setError(""); // Сбрасываем ошибку перед запросом
     try {
-      const response = await fetch("http://localhost:5000/login", {
+      const response = await fetch("https://nukesul-brepb-651f.twc1.net/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

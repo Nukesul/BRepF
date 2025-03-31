@@ -32,11 +32,11 @@ const Home = () => {
 
       try {
         const [branchesRes, productsRes, discountsRes, storiesRes, categoriesRes] = await Promise.all([
-          fetch("http://localhost:5000/branches"),
-          fetch("http://localhost:5000/products"),
-          fetch("http://localhost:5000/discounts"),
-          fetch("http://localhost:5000/stories"),
-          fetch("http://localhost:5000/categories"),
+          fetch("https://nukesul-brepb-651f.twc1.net/branches"),
+          fetch("https://nukesul-brepb-651f.twc1.net/products"),
+          fetch("https://nukesul-brepb-651f.twc1.net/discounts"),
+          fetch("https://nukesul-brepb-651f.twc1.net/stories"),
+          fetch("https://nukesul-brepb-651f.twc1.net/categories"),
         ]);
 
         // Проверяем, успешны ли запросы
@@ -241,7 +241,7 @@ const Home = () => {
                       onClick={() => setSelectedStory(story)}
                     >
                       <img
-                        src={`http://localhost:5000/uploads/${story.image}`}
+                        src={`https://nukesul-brepb-651f.twc1.net/uploads/${story.image}`}
                         alt="Story"
                         className="w-20 h-20 rounded-full object-cover hover:scale-110 transition border-4 border-orange-500"
                       />
@@ -262,7 +262,7 @@ const Home = () => {
                       style={{ width: `${storyProgress}%`, transition: "width 0.05s linear" }}
                     ></div>
                     <img
-                      src={`http://localhost:5000/uploads/${selectedStory.image}`}
+                      src={`https://nukesul-brepb-651f.twc1.net/uploads/${selectedStory.image}`}
                       alt="Selected Story"
                       className="w-full h-full object-contain"
                     />
@@ -412,7 +412,7 @@ const Home = () => {
                               >
                                 <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
                                 <img
-                                  src={`http://localhost:5000/uploads/${product.image}`}
+                                  src={`https://nukesul-brepb-651f.twc1.net/uploads/${product.image}`}
                                   alt={product.name}
                                   className="w-full h-48 object-cover rounded-t-lg"
                                   onError={(e) => (e.target.src = "https://via.placeholder.com/300")}
@@ -473,7 +473,7 @@ const Home = () => {
 
                   <div className="p-6">
                     <img
-                      src={`http://localhost:5000/uploads/${selectedProduct.image}`}
+                      src={`https://nukesul-brepb-651f.twc1.net/uploads/${selectedProduct.image}`}
                       alt={selectedProduct.name}
                       className="w-full h-64 object-cover rounded-lg mb-4"
                       onError={(e) => (e.target.src = "https://via.placeholder.com/300")}
@@ -555,7 +555,7 @@ const Home = () => {
                       {cart.map((item, index) => (
                         <div key={index} className="flex items-start py-4 border-b">
                           <img
-                            src={`http://localhost:5000/uploads/${item.image}`}
+                            src={`https://nukesul-brepb-651f.twc1.net/uploads/${item.image}`}
                             alt={item.name}
                             className="w-16 h-16 object-cover rounded-lg mr-4"
                           />
