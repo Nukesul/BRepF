@@ -20,8 +20,11 @@ const Home = () => {
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
-  const [loading, setLoading] = useState(true); // Состояние загрузки
-  const [error, setError] = useState(null); // Состояние ошибки
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [promoCode, setPromoCode] = useState(""); // Поле для ввода промокода
+  const [promoDiscount, setPromoDiscount] = useState(0); // Процент скидки от промокода
+  const [promoError, setPromoError] = useState(null); // Ошибка при проверке промокода
   const categoriesRef = useRef({});
   const user = JSON.parse(localStorage.getItem("user")) || null;
 
@@ -39,7 +42,6 @@ const Home = () => {
           fetch("https://nukesul-brepb-651f.twc1.net/categories"),
         ]);
 
-        // Проверяем, успешны ли запросы
         if (!branchesRes.ok) throw new Error("Ошибка загрузки филиалов");
         if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
         if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
@@ -104,7 +106,8 @@ const Home = () => {
   const getDiscountedPrice = (price, productId) => {
     if (!price) return 0;
     const discount = discounts.find((d) => d.product_id === productId);
-    return discount ? Number(price) * (1 - discount.discount_percent / 100) : Number(price);
+    const baseDiscount = discount ? Number(price) * (1 - discount.discount_percent / 100) : Number(price);
+    return promoDiscount ? baseDiscount * (1 - promoDiscount / 100) : baseDiscount;
   };
 
   const formatPrice = (price) => {
@@ -188,8 +191,26 @@ const Home = () => {
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const total = subtotal + (deliveryOption === "delivery" ? 200 : 0);
-    return total;
+    const totalWithDelivery = subtotal + (deliveryOption === "delivery" ? 200 : 0);
+    return totalWithDelivery;
+  };
+
+  const applyPromoCode = async () => {
+    if (!promoCode) {
+      setPromoError("Введите промокод");
+      return;
+    }
+    try {
+      const response = await fetch(`https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`);
+      if (!response.ok) throw new Error("Промокод не найден или неактивен");
+      const promo = await response.json();
+      setPromoDiscount(promo.discount_percent);
+      setPromoError(null);
+      alert(`Промокод "${promo.code}" применен! Скидка ${promo.discount_percent}%`);
+    } catch (err) {
+      setPromoDiscount(0);
+      setPromoError("Неверный или неактивный промокод");
+    }
   };
 
   const handleCheckout = () => {
@@ -206,6 +227,9 @@ const Home = () => {
     setCart([]);
     setShowCart(false);
     setShowCheckout(false);
+    setPromoCode("");
+    setPromoDiscount(0);
+    setPromoError(null);
   };
 
   const getAvailableCategories = () => {
@@ -724,6 +748,31 @@ const Home = () => {
                       </div>
 
                       <div>
+                        <h3 className="text-lg font-semibold mb-3">Промокод</h3>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            value={promoCode}
+                            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                            placeholder="Введите промокод"
+                          />
+                          <button
+                            onClick={applyPromoCode}
+                            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
+                          >
+                            Применить
+                          </button>
+                        </div>
+                        {promoError && <p className="text-red-500 text-sm mt-2">{promoError}</p>}
+                        {promoDiscount > 0 && (
+                          <p className="text-green-500 text-sm mt-2">
+                            Промокод применен! Скидка: {promoDiscount}%
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
                         <h3 className="text-lg font-semibold mb-3">Ваш заказ</h3>
                         <div className="space-y-3">
                           {cart.map((item, index) => (
@@ -755,9 +804,17 @@ const Home = () => {
                             <span>{formatPrice(deliveryCost)} Сом</span>
                           </div>
                         )}
+                        {promoDiscount > 0 && (
+                          <div className="flex justify-between text-green-600">
+                            <span>Скидка по промокоду:</span>
+                            <span>-{formatPrice(calculateSubtotal() * (promoDiscount / 100))} Сом</span>
+                          </div>
+                        )}
                         <div className="flex justify-between font-bold text-lg">
                           <span>Итого:</span>
-                          <span className="text-orange-600">{formatPrice(calculateTotal())} Сом</span>
+                          <span className="text-orange-600">
+                            {formatPrice(calculateTotal() - (promoDiscount > 0 ? calculateSubtotal() * (promoDiscount / 100) : 0))} Сом
+                          </span>
                         </div>
                       </div>
                     </div>
