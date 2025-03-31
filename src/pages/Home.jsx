@@ -22,9 +22,9 @@ const Home = () => {
   const [activeCategory, setActiveCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [promoCode, setPromoCode] = useState(""); // Поле для ввода промокода
-  const [promoDiscount, setPromoDiscount] = useState(0); // Процент скидки от промокода
-  const [promoError, setPromoError] = useState(null); // Ошибка при проверке промокода
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoError, setPromoError] = useState(null);
   const categoriesRef = useRef({});
   const user = JSON.parse(localStorage.getItem("user")) || null;
 
@@ -111,7 +111,7 @@ const Home = () => {
   };
 
   const formatPrice = (price) => {
-    return price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return price ? price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ") : "0.00";
   };
 
   const scrollToCategory = (categoryId) => {
@@ -237,6 +237,10 @@ const Home = () => {
     return categories.filter((category) =>
       filteredProducts.some((product) => product.category_id === category.id)
     );
+  };
+
+  const hasMultiplePrices = (product) => {
+    return product.price_small || product.price_medium || product.price_large;
   };
 
   return (
@@ -444,23 +448,45 @@ const Home = () => {
                                 <div className="mt-4">
                                   <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
                                   <p className="text-gray-600 line-clamp-2">{product.description}</p>
-                                  {product.price_small ? (
+                                  {hasMultiplePrices(product) ? (
                                     <div className="mt-2 space-y-1">
-                                      <p className="text-orange-600 font-semibold">
-                                        {formatPrice(getDiscountedPrice(product.price_small, product.id))} Сом
-                                        {discounts.some((d) => d.product_id === product.id) && (
-                                          <span className="line-through text-gray-500 ml-2">
-                                            {product.price_small} Сом
-                                          </span>
-                                        )}
-                                      </p>
+                                      {product.price_small && (
+                                        <p className="text-orange-600 font-semibold">
+                                          Маленькая: {formatPrice(getDiscountedPrice(product.price_small, product.id))} Сом
+                                          {discounts.some((d) => d.product_id === product.id) && (
+                                            <span className="line-through text-gray-500 ml-2">
+                                              {formatPrice(product.price_small)} Сом
+                                            </span>
+                                          )}
+                                        </p>
+                                      )}
+                                      {product.price_medium && (
+                                        <p className="text-orange-600 font-semibold">
+                                          Средняя: {formatPrice(getDiscountedPrice(product.price_medium, product.id))} Сом
+                                          {discounts.some((d) => d.product_id === product.id) && (
+                                            <span className="line-through text-gray-500 ml-2">
+                                              {formatPrice(product.price_medium)} Сом
+                                            </span>
+                                          )}
+                                        </p>
+                                      )}
+                                      {product.price_large && (
+                                        <p className="text-orange-600 font-semibold">
+                                          Большая: {formatPrice(getDiscountedPrice(product.price_large, product.id))} Сом
+                                          {discounts.some((d) => d.product_id === product.id) && (
+                                            <span className="line-through text-gray-500 ml-2">
+                                              {formatPrice(product.price_large)} Сом
+                                            </span>
+                                          )}
+                                        </p>
+                                      )}
                                     </div>
                                   ) : (
                                     <p className="text-orange-600 font-semibold mt-2">
                                       {formatPrice(getDiscountedPrice(product.price_single, product.id))} Сом
                                       {discounts.some((d) => d.product_id === product.id) && (
                                         <span className="line-through text-gray-500 ml-2">
-                                          {product.price_single} Сом
+                                          {formatPrice(product.price_single)} Сом
                                         </span>
                                       )}
                                     </p>
@@ -505,10 +531,10 @@ const Home = () => {
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">{selectedProduct.name}</h3>
                     <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
 
-                    {selectedProduct.price_small ? (
+                    {hasMultiplePrices(selectedProduct) ? (
                       <div className="mb-6">
                         <h4 className="text-lg font-semibold text-gray-800 mb-3">Выберите размер:</h4>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {["small", "medium", "large"].map((size) =>
                             selectedProduct[`price_${size}`] && (
                               <button
@@ -525,7 +551,7 @@ const Home = () => {
                                 </span>
                                 {discounts.some((d) => d.product_id === selectedProduct.id) && (
                                   <span className="line-through text-gray-500 text-sm">
-                                    {selectedProduct[`price_${size}`]} Сом
+                                    {formatPrice(selectedProduct[`price_${size}`])} Сом
                                   </span>
                                 )}
                               </button>
@@ -540,7 +566,9 @@ const Home = () => {
                             {formatPrice(getDiscountedPrice(selectedProduct.price_single, selectedProduct.id))} Сом
                           </span>
                           {discounts.some((d) => d.product_id === selectedProduct.id) && (
-                            <span className="line-through text-gray-500">{selectedProduct.price_single} Сом</span>
+                            <span className="line-through text-gray-500">
+                              {formatPrice(selectedProduct.price_single)} Сом
+                            </span>
                           )}
                         </div>
                         <button

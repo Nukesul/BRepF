@@ -17,16 +17,17 @@ const Admin = () => {
     categoryId: "",
     subCategoryId: "",
     image: null,
+    priceCount: 1, // Новое поле для выбора количества цен
   });
   const [discount, setDiscount] = useState({ productId: "", discountPercent: "" });
-  const [promoCode, setPromoCode] = useState({ code: "", discountPercent: "" }); // Новое состояние для промокодов
+  const [promoCode, setPromoCode] = useState({ code: "", discountPercent: "", expiresAt: "", isActive: true });
   const [story, setStory] = useState({ image: null });
   const [branches, setBranches] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [discounts, setDiscounts] = useState([]);
-  const [promoCodes, setPromoCodes] = useState([]); // Список промокодов
+  const [promoCodes, setPromoCodes] = useState([]);
   const [stories, setStories] = useState([]);
   const [editId, setEditId] = useState(null);
   const [activeTab, setActiveTab] = useState("products");
@@ -45,7 +46,7 @@ const Admin = () => {
           subCategoriesRes,
           productsRes,
           discountsRes,
-          promoCodesRes, // Новый запрос для промокодов
+          promoCodesRes,
           storiesRes,
         ] = await Promise.all([
           fetch("https://nukesul-brepb-651f.twc1.net/branches", { headers: { Authorization: `Bearer ${token}` } }),
@@ -53,7 +54,7 @@ const Admin = () => {
           fetch("https://nukesul-brepb-651f.twc1.net/subcategories", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/products", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/discounts", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("https://nukesul-brepb-651f.twc1.net/promo-codes", { headers: { Authorization: `Bearer ${token}` } }), // Предполагаемый эндпоинт
+          fetch("https://nukesul-brepb-651f.twc1.net/promo-codes", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/stories", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
@@ -70,7 +71,7 @@ const Admin = () => {
         setSubCategories(await subCategoriesRes.json());
         setProducts(await productsRes.json());
         setDiscounts(await discountsRes.json());
-        setPromoCodes(await promoCodesRes.json()); // Устанавливаем промокоды
+        setPromoCodes(await promoCodesRes.json());
         setStories(await storiesRes.json());
       } catch (err) {
         console.error("Ошибка загрузки данных:", err);
@@ -90,7 +91,7 @@ const Admin = () => {
       if (isMultipart) {
         const formData = new FormData();
         for (const key in data) {
-          if (data[key] !== null && data[key] !== "") formData.append(key, data[key]);
+          if (data[key] !== null && data[key] !== "" && key !== "priceCount") formData.append(key, data[key]);
         }
         response = await fetch(finalUrl, {
           method,
@@ -142,6 +143,8 @@ const Admin = () => {
 
   const handleEdit = (item, setData, resetFields) => {
     setEditId(item.id);
+    const priceCount =
+      (item.price_small ? 1 : 0) + (item.price_medium ? 1 : 0) + (item.price_large ? 1 : 0) || 1;
     setData({
       ...item,
       categoryId: item.category_id || item.categoryId,
@@ -151,8 +154,11 @@ const Admin = () => {
       priceMedium: item.price_medium || "",
       priceLarge: item.price_large || "",
       priceSingle: item.price_single || "",
-      code: item.code || "", // Для промокодов
-      discountPercent: item.discount_percent || "", // Для промокодов
+      code: item.code || "",
+      discountPercent: item.discount_percent || "",
+      expiresAt: item.expires_at || "",
+      isActive: item.is_active !== undefined ? item.is_active : true,
+      priceCount: priceCount,
     });
   };
 
@@ -171,20 +177,16 @@ const Admin = () => {
       categoryId: "",
       subCategoryId: "",
       image: null,
+      priceCount: 1,
     });
   const resetDiscount = () => setDiscount({ productId: "", discountPercent: "" });
-  const resetPromoCode = () => setPromoCode({ code: "", discountPercent: "" }); // Сброс промокода
+  const resetPromoCode = () => setPromoCode({ code: "", discountPercent: "", expiresAt: "", isActive: true });
   const resetStory = () => setStory({ image: null });
 
   const handleProductSubmit = (e) =>
     handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/products", product, setProducts, products, resetProduct, true);
   const handlePromoCodeSubmit = (e) =>
-    handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/promo-codes", promoCode, setPromoCodes, promoCodes, resetPromoCode); // Обработчик для промокодов
-
-  const isPizzaCategory = () => {
-    const selectedCategory = categories.find((c) => c.id === product.categoryId);
-    return selectedCategory?.name.toLowerCase().includes("пицца") || false;
-  };
+    handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/promo-codes", promoCode, setPromoCodes, promoCodes, resetPromoCode);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
@@ -209,7 +211,7 @@ const Admin = () => {
               {tab === "categories" && "Категории"}
               {tab === "subcategories" && "Подкатегории"}
               {tab === "discounts" && "Скидки"}
-              {tab === "promo-codes" && "Промокоды"} {/* Новая вкладка */}
+              {tab === "promo-codes" && "Промокоды"}
               {tab === "stories" && "Истории"}
             </button>
           ))}
@@ -289,7 +291,42 @@ const Admin = () => {
                       ))}
                   </select>
                 </div>
-                {isPizzaCategory() ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Количество цен</label>
+                  <select
+                    value={product.priceCount}
+                    onChange={(e) => {
+                      const count = Number(e.target.value);
+                      setProduct({
+                        ...product,
+                        priceCount: count,
+                        priceSmall: count >= 1 ? product.priceSmall : "",
+                        priceMedium: count >= 2 ? product.priceMedium : "",
+                        priceLarge: count === 3 ? product.priceLarge : "",
+                        priceSingle: count === 1 ? product.priceSingle : "",
+                      });
+                    }}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  >
+                    <option value={1}>1 цена</option>
+                    <option value={2}>2 цены</option>
+                    <option value={3}>3 цены</option>
+                  </select>
+                </div>
+                {product.priceCount === 1 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Цена</label>
+                    <input
+                      type="number"
+                      value={product.priceSingle}
+                      onChange={(e) => setProduct({ ...product, priceSingle: e.target.value })}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                )}
+                {product.priceCount >= 2 && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Цена (Маленькая)</label>
@@ -299,6 +336,7 @@ const Admin = () => {
                         onChange={(e) => setProduct({ ...product, priceSmall: e.target.value })}
                         className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
                         step="0.01"
+                        required
                       />
                     </div>
                     <div>
@@ -309,29 +347,21 @@ const Admin = () => {
                         onChange={(e) => setProduct({ ...product, priceMedium: e.target.value })}
                         className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
                         step="0.01"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Цена (Большая)</label>
-                      <input
-                        type="number"
-                        value={product.priceLarge}
-                        onChange={(e) => setProduct({ ...product, priceLarge: e.target.value })}
-                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
-                        step="0.01"
+                        required
                       />
                     </div>
                   </>
-                ) : (
+                )}
+                {product.priceCount === 3 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Цена</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Цена (Большая)</label>
                     <input
                       type="number"
-                      value={product.priceSingle}
-                      onChange={(e) => setProduct({ ...product, priceSingle: e.target.value })}
+                      value={product.priceLarge}
+                      onChange={(e) => setProduct({ ...product, priceLarge: e.target.value })}
                       className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
                       step="0.01"
-                      required={product.categoryId}
+                      required
                     />
                   </div>
                 )}
@@ -373,9 +403,13 @@ const Admin = () => {
                         <p className="text-sm text-gray-600">Категория: {p.category_name || "Не указана"}</p>
                         <p className="text-sm text-gray-600">
                           Цены:{" "}
-                          {p.is_pizza
-                            ? `S: ${p.price_small || "-"}₽, M: ${p.price_medium || "-"}₽, L: ${p.price_large || "-"}₽`
-                            : `${p.price_single || "-"}₽`}
+                          {p.price_small && p.price_medium && p.price_large
+                            ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом, L: ${p.price_large} Сом`
+                            : p.price_small && p.price_medium
+                            ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом`
+                            : p.price_single
+                            ? `${p.price_single} Сом`
+                            : "Не указаны"}
                         </p>
                       </div>
                     </div>
@@ -693,6 +727,24 @@ const Admin = () => {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Дата истечения (опционально)</label>
+                  <input
+                    type="datetime-local"
+                    value={promoCode.expiresAt || ""}
+                    onChange={(e) => setPromoCode({ ...promoCode, expiresAt: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Активен</label>
+                  <input
+                    type="checkbox"
+                    checked={promoCode.isActive !== false}
+                    onChange={(e) => setPromoCode({ ...promoCode, isActive: e.target.checked })}
+                    className="w-5 h-5"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
@@ -709,6 +761,8 @@ const Admin = () => {
                   <div key={pc.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <p className="font-bold text-gray-800">{pc.code}</p>
                     <p className="text-sm text-orange-600">Скидка: {pc.discount_percent}%</p>
+                    <p className="text-sm text-gray-600">Истекает: {pc.expires_at ? new Date(pc.expires_at).toLocaleString() : "Бессрочный"}</p>
+                    <p className="text-sm text-gray-600">Статус: {pc.is_active ? "Активен" : "Неактивен"}</p>
                     <div className="mt-4 flex justify-end space-x-2">
                       <button
                         onClick={() => handleEdit(pc, setPromoCode, resetPromoCode)}
