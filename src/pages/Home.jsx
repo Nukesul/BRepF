@@ -104,14 +104,16 @@ const Home = () => {
   }, [selectedStory, stories]);
 
   const getDiscountedPrice = (price, productId) => {
-    if (!price) return 0;
+    if (price === null || price === undefined) return 0;
     const discount = discounts.find((d) => d.product_id === productId);
-    const baseDiscount = discount ? Number(price) * (1 - discount.discount_percent / 100) : Number(price);
+    const basePrice = Number(price);
+    const baseDiscount = discount ? basePrice * (1 - discount.discount_percent / 100) : basePrice;
     return promoDiscount ? baseDiscount * (1 - promoDiscount / 100) : baseDiscount;
   };
 
   const formatPrice = (price) => {
-    return price ? price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ") : "0.00";
+    if (price === null || price === undefined || isNaN(price)) return "0.00";
+    return Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   };
 
   const scrollToCategory = (categoryId) => {
