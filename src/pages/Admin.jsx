@@ -19,12 +19,14 @@ const Admin = () => {
     image: null,
   });
   const [discount, setDiscount] = useState({ productId: "", discountPercent: "" });
+  const [promoCode, setPromoCode] = useState({ code: "", discountPercent: "" }); // Новое состояние для промокодов
   const [story, setStory] = useState({ image: null });
   const [branches, setBranches] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [discounts, setDiscounts] = useState([]);
+  const [promoCodes, setPromoCodes] = useState([]); // Список промокодов
   const [stories, setStories] = useState([]);
   const [editId, setEditId] = useState(null);
   const [activeTab, setActiveTab] = useState("products");
@@ -37,12 +39,21 @@ const Admin = () => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const [branchesRes, categoriesRes, subCategoriesRes, productsRes, discountsRes, storiesRes] = await Promise.all([
+        const [
+          branchesRes,
+          categoriesRes,
+          subCategoriesRes,
+          productsRes,
+          discountsRes,
+          promoCodesRes, // Новый запрос для промокодов
+          storiesRes,
+        ] = await Promise.all([
           fetch("https://nukesul-brepb-651f.twc1.net/branches", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/categories", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/subcategories", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/products", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/discounts", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/promo-codes", { headers: { Authorization: `Bearer ${token}` } }), // Предполагаемый эндпоинт
           fetch("https://nukesul-brepb-651f.twc1.net/stories", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
@@ -51,6 +62,7 @@ const Admin = () => {
         if (!subCategoriesRes.ok) throw new Error("Ошибка загрузки подкатегорий");
         if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
         if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
+        if (!promoCodesRes.ok) throw new Error("Ошибка загрузки промокодов");
         if (!storiesRes.ok) throw new Error("Ошибка загрузки историй");
 
         setBranches(await branchesRes.json());
@@ -58,6 +70,7 @@ const Admin = () => {
         setSubCategories(await subCategoriesRes.json());
         setProducts(await productsRes.json());
         setDiscounts(await discountsRes.json());
+        setPromoCodes(await promoCodesRes.json()); // Устанавливаем промокоды
         setStories(await storiesRes.json());
       } catch (err) {
         console.error("Ошибка загрузки данных:", err);
@@ -138,6 +151,8 @@ const Admin = () => {
       priceMedium: item.price_medium || "",
       priceLarge: item.price_large || "",
       priceSingle: item.price_single || "",
+      code: item.code || "", // Для промокодов
+      discountPercent: item.discount_percent || "", // Для промокодов
     });
   };
 
@@ -158,9 +173,13 @@ const Admin = () => {
       image: null,
     });
   const resetDiscount = () => setDiscount({ productId: "", discountPercent: "" });
+  const resetPromoCode = () => setPromoCode({ code: "", discountPercent: "" }); // Сброс промокода
   const resetStory = () => setStory({ image: null });
 
-  const handleProductSubmit = (e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/products", product, setProducts, products, resetProduct, true);
+  const handleProductSubmit = (e) =>
+    handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/products", product, setProducts, products, resetProduct, true);
+  const handlePromoCodeSubmit = (e) =>
+    handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/promo-codes", promoCode, setPromoCodes, promoCodes, resetPromoCode); // Обработчик для промокодов
 
   const isPizzaCategory = () => {
     const selectedCategory = categories.find((c) => c.id === product.categoryId);
@@ -175,7 +194,7 @@ const Admin = () => {
 
         {/* Tab Navigation */}
         <div className="flex justify-center space-x-4 mb-8">
-          {["products", "branches", "categories", "subcategories", "discounts", "stories"].map((tab) => (
+          {["products", "branches", "categories", "subcategories", "discounts", "promo-codes", "stories"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -190,6 +209,7 @@ const Admin = () => {
               {tab === "categories" && "Категории"}
               {tab === "subcategories" && "Подкатегории"}
               {tab === "discounts" && "Скидки"}
+              {tab === "promo-codes" && "Промокоды"} {/* Новая вкладка */}
               {tab === "stories" && "Истории"}
             </button>
           ))}
@@ -645,6 +665,71 @@ const Admin = () => {
           </section>
         )}
 
+        {/* Promo Codes Section */}
+        {activeTab === "promo-codes" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление промокодами</h2>
+            <form onSubmit={handlePromoCodeSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Промокод</label>
+                  <input
+                    type="text"
+                    value={promoCode.code}
+                    onChange={(e) => setPromoCode({ ...promoCode, code: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Процент скидки</label>
+                  <input
+                    type="number"
+                    value={promoCode.discountPercent}
+                    onChange={(e) => setPromoCode({ ...promoCode, discountPercent: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    min="1"
+                    max="100"
+                    required
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить промокод" : "Добавить промокод"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список промокодов</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {promoCodes.map((pc) => (
+                  <div key={pc.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <p className="font-bold text-gray-800">{pc.code}</p>
+                    <p className="text-sm text-orange-600">Скидка: {pc.discount_percent}%</p>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEdit(pc, setPromoCode, resetPromoCode)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/promo-codes", pc.id, setPromoCodes, promoCodes)}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Stories Section */}
         {activeTab === "stories" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
@@ -674,7 +759,7 @@ const Admin = () => {
                 {stories.map((s) => (
                   <div key={s.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <img
-                      src={`https:nukesul-brepb-651f.twc1.net/uploads/${s.image}`}
+                      src={`https://nukesul-brepb-651f.twc1.net/uploads/${s.image}`}
                       alt="Story"
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
