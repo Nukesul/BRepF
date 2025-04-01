@@ -34,30 +34,30 @@ const Home = () => {
       setError(null);
 
       try {
-        const [branchesRes, productsRes, discountsRes, storiesRes, categoriesRes] = await Promise.all([
-          fetch("https://nukesul-brepb-651f.twc1.net/branches"),
-          fetch("https://nukesul-brepb-651f.twc1.net/products"),
-          fetch("https://nukesul-brepb-651f.twc1.net/discounts"),
-          fetch("https://nukesul-brepb-651f.twc1.net/stories"),
-          fetch("https://nukesul-brepb-651f.twc1.net/categories"),
-        ]);
+        const endpoints = [
+          "branches",
+          "products",
+          "discounts",
+          "stories",
+          "categories",
+        ];
+        const responses = await Promise.all(
+          endpoints.map((endpoint) =>
+            fetch(`https://nukesul-brepb-651f.twc1.net/${endpoint}`).then((res) => {
+              if (!res.ok) throw new Error(`Ошибка загрузки ${endpoint}`);
+              return res.json();
+            })
+          )
+        );
 
-        if (!branchesRes.ok) throw new Error("Ошибка загрузки филиалов");
-        if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
-        if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
-        if (!storiesRes.ok) throw new Error("Ошибка загрузки историй");
-        if (!categoriesRes.ok) throw new Error("Ошибка загрузки категорий");
-
-        const branchesData = await branchesRes.json();
-        const productsData = await productsRes.json();
-        setBranches(branchesData);
-        setAllProducts(productsData);
-        setDiscounts(await discountsRes.json());
-        setStories(await storiesRes.json());
-        setCategories(await categoriesRes.json());
+        setBranches(responses[0]);
+        setAllProducts(responses[1]);
+        setDiscounts(responses[2]);
+        setStories(responses[3]);
+        setCategories(responses[4]);
       } catch (err) {
         console.error("Ошибка загрузки данных:", err);
-        setError("Не удалось загрузить данные. Проверьте подключение к серверу.");
+        setError("Не удалось загрузить данные. Проверьте подключение или попробуйте позже.");
       } finally {
         setLoading(false);
       }
@@ -71,12 +71,14 @@ const Home = () => {
       setFilteredProducts(branchProducts);
       setShowBranchSelection(false);
 
-      if (categories.length > 0) {
+      if (categories.length > 0 && branchProducts.length > 0) {
         const availableCategories = categories.filter((cat) =>
           branchProducts.some((p) => p.category_id === cat.id)
         );
         if (availableCategories.length > 0) {
           setActiveCategory(availableCategories[0].id);
+        } else {
+          setActiveCategory(null);
         }
       }
     } else {
@@ -87,33 +89,34 @@ const Home = () => {
   }, [selectedBranch, allProducts, categories]);
 
   useEffect(() => {
-    if (selectedStory) {
-      setStoryProgress(0);
-      const timer = setInterval(() => {
-        setStoryProgress((prev) => {
-          if (prev >= 100) {
-            const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-            const nextIndex = (currentIndex + 1) % stories.length;
-            setSelectedStory(stories[nextIndex]);
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, 50);
-      return () => clearInterval(timer);
-    }
+    if (!selectedStory || stories.length === 0) return;
+
+    setStoryProgress(0);
+    const timer = setInterval(() => {
+      setStoryProgress((prev) => {
+        if (prev >= 100) {
+          const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
+          const nextIndex = (currentIndex + 1) % stories.length;
+          setSelectedStory(stories[nextIndex]);
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 50);
+
+    return () => clearInterval(timer);
   }, [selectedStory, stories]);
 
   const getDiscountedPrice = (price, productId) => {
-    if (price === null || price === undefined) return 0;
+    if (!price || isNaN(price)) return 0;
     const discount = discounts.find((d) => d.product_id === productId);
-    const basePrice = Number(price) || 0;
+    const basePrice = Number(price);
     const baseDiscount = discount ? basePrice * (1 - discount.discount_percent / 100) : basePrice;
-    return promoDiscount ? baseDiscount * (1 - promoDiscount / 100) : baseDiscount;
+    return promoDiscount > 0 ? baseDiscount * (1 - promoDiscount / 100) : baseDiscount;
   };
 
   const formatPrice = (price) => {
-    if (price === null || price === undefined || isNaN(price)) return "0.00";
+    if (!price || isNaN(price)) return "0.00";
     return Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   };
 
@@ -145,6 +148,7 @@ const Home = () => {
     setSelectedBranch(null);
     setShowBranchSelection(true);
     setActiveCategory(null);
+    setShowCart(false);
   };
 
   const handleProductClick = (product) => {
@@ -152,6 +156,7 @@ const Home = () => {
   };
 
   const addToCart = (product, size = null) => {
+    if (!product) return;
     const price = size ? product[`price_${size}`] : product.price_single;
     const finalPrice = getDiscountedPrice(price, product.id);
 
@@ -178,6 +183,7 @@ const Home = () => {
   };
 
   const removeFromCart = (index) => {
+    if (index < 0 || index >= cart.length) return;
     const newCart = [...cart];
     newCart.splice(index, 1);
     setCart(newCart);
@@ -204,6 +210,7 @@ const Home = () => {
       setPromoError("Введите промокод");
       return;
     }
+
     try {
       const response = await fetch(`https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`);
       if (!response.ok) throw new Error("Промокод не найден или неактивен");
@@ -214,10 +221,12 @@ const Home = () => {
     } catch (err) {
       setPromoDiscount(0);
       setPromoError("Неверный или неактивный промокод");
+      console.error("Ошибка применения промокода:", err);
     }
   };
 
   const handleCheckout = () => {
+    if (cart.length === 0) return;
     setDeliveryCost(deliveryOption === "delivery" ? 200 : 0);
     setShowCheckout(true);
   };
@@ -227,6 +236,7 @@ const Home = () => {
   };
 
   const handlePlaceOrder = () => {
+    if (cart.length === 0) return;
     alert("Заказ успешно оформлен!");
     setCart([]);
     setShowCart(false);
@@ -244,7 +254,7 @@ const Home = () => {
   };
 
   const hasMultiplePrices = (product) => {
-    return Boolean(product.price_small || product.price_medium || product.price_large);
+    return Boolean(product?.price_small || product?.price_medium || product?.price_large);
   };
 
   const getImageUrl = (imagePath) => {
@@ -264,7 +274,7 @@ const Home = () => {
       <main className="flex-grow max-w-6xl mx-auto p-6 space-y-12">
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-xl text-gray-600">Загрузка данных...</p>
+            <p className="text-xl text-gray-600 animate-pulse">Загрузка данных...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-md">
@@ -284,7 +294,7 @@ const Home = () => {
                     >
                       <img
                         src={getImageUrl(story.image)}
-                        alt={story.title || "Story"}
+                        alt={story.title || "Акция"}
                         className="w-20 h-20 rounded-full object-cover hover:scale-110 transition border-4 border-orange-500"
                         onError={handleImageError}
                       />
@@ -301,12 +311,12 @@ const Home = () => {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div
-                      className="absolute top-0 left-0 w-full h-1 bg-orange-500"
+                      className="absolute top-0 left-0 h-1 bg-orange-500"
                       style={{ width: `${storyProgress}%`, transition: "width 0.05s linear" }}
                     />
                     <img
                       src={getImageUrl(selectedStory.image)}
-                      alt={selectedStory.title || "Selected Story"}
+                      alt={selectedStory.title || "Выбранная акция"}
                       className="w-full h-full object-contain"
                       onError={handleImageError}
                     />
@@ -454,13 +464,13 @@ const Home = () => {
                                 <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300" />
                                 <img
                                   src={getImageUrl(product.image)}
-                                  alt={product.name}
+                                  alt={product.name || "Продукт"}
                                   className="w-full h-48 object-cover rounded-t-lg"
                                   onError={handleImageError}
                                 />
                                 <div className="mt-4">
                                   <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
-                                  <p className="text-gray-600 line-clamp-2">{product.description}</p>
+                                  <p className="text-gray-600 line-clamp-2">{product.description || "Нет описания"}</p>
                                   {hasMultiplePrices(product) ? (
                                     <div className="mt-2 space-y-1">
                                       {product.price_small && (
@@ -536,12 +546,12 @@ const Home = () => {
                   <div className="p-6">
                     <img
                       src={getImageUrl(selectedProduct.image)}
-                      alt={selectedProduct.name}
+                      alt={selectedProduct.name || "Продукт"}
                       className="w-full h-64 object-cover rounded-lg mb-4"
                       onError={handleImageError}
                     />
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">{selectedProduct.name}</h3>
-                    <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
+                    <p className="text-gray-600 mb-4">{selectedProduct.description || "Описание отсутствует"}</p>
 
                     {hasMultiplePrices(selectedProduct) ? (
                       <div className="mb-6">
@@ -616,10 +626,10 @@ const Home = () => {
 
                     <div className="flex-grow overflow-y-auto">
                       {cart.map((item, index) => (
-                        <div key={index} className="flex items-start py-4 border-b">
+                        <div key={`${item.id}-${item.size || "single"}`} className="flex items-start py-4 border-b">
                           <img
                             src={getImageUrl(item.image)}
-                            alt={item.name}
+                            alt={item.name || "Продукт"}
                             className="w-16 h-16 object-cover rounded-lg mr-4"
                             onError={handleImageError}
                           />
@@ -670,7 +680,8 @@ const Home = () => {
                       </div>
                       <button
                         onClick={handleCheckout}
-                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg"
+                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg disabled:bg-gray-400"
+                        disabled={cart.length === 0}
                       >
                         Оформить заказ
                       </button>
@@ -769,6 +780,7 @@ const Home = () => {
                               type="text"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                               placeholder="Ваше имя"
+                              required
                             />
                           </div>
                           <div>
@@ -777,6 +789,7 @@ const Home = () => {
                               type="tel"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                               placeholder="+996 XXX XXX XXX"
+                              required
                             />
                           </div>
                           {deliveryOption === "delivery" && (
@@ -786,6 +799,7 @@ const Home = () => {
                                 type="text"
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                                 placeholder="Улица, дом, квартира"
+                                required
                               />
                             </div>
                           )}
@@ -798,7 +812,7 @@ const Home = () => {
                           <input
                             type="text"
                             value={promoCode}
-                            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                            onChange={(e) => setPromoCode(e.target.value.toUpperCase().trim())}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                             placeholder="Введите промокод"
                           />
@@ -821,7 +835,10 @@ const Home = () => {
                         <h3 className="text-lg font-semibold mb-3">Ваш заказ</h3>
                         <div className="space-y-3">
                           {cart.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center py-2 border-b">
+                            <div
+                              key={`${item.id}-${item.size || "single"}`}
+                              className="flex justify-between items-center py-2 border-b"
+                            >
                               <div>
                                 <p className="font-medium">{item.name}</p>
                                 {item.size && (
@@ -871,7 +888,8 @@ const Home = () => {
                     <div className="border-t pt-4">
                       <button
                         onClick={handlePlaceOrder}
-                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg"
+                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg disabled:bg-gray-400"
+                        disabled={cart.length === 0}
                       >
                         Подтвердить заказ
                       </button>
