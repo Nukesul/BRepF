@@ -245,11 +245,12 @@ const Home = () => {
     return product.price_small || product.price_medium || product.price_large;
   };
 
-  // Функция для формирования URL изображения
+  // Функция для формирования URL изображения через маршрут /product-image/:key
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/300"; // Запасное изображение, если путь пустой
-    const url = `https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/boody-images/${imagePath}`;
-    return url;
+    // Извлекаем имя файла из полного пути, если он содержит boody-images/
+    const fileName = imagePath.includes("boody-images/") ? imagePath.split("boody-images/")[1] : imagePath;
+    return `https://nukesul-brepb-651f.twc1.net/product-image/${fileName}`;
   };
 
   // Обработчик ошибки загрузки изображения
