@@ -2,6 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
+// Константы для переключения между прямым URL и прокси
+const USE_PROXY = false; // Установите true, если нужно использовать прокси через сервер
+const PROXY_BASE_URL = "https://nukesul-brepb-651f.twc1.net/product-image/";
+const PLACEHOLDER_IMAGE = "/placeholder-image.jpg"; // Укажи путь к локальной заглушке или URL
+
 const Home = () => {
   const [branches, setBranches] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -27,6 +32,18 @@ const Home = () => {
   const [promoError, setPromoError] = useState(null);
   const categoriesRef = useRef({});
   const user = JSON.parse(localStorage.getItem("user")) || null;
+
+  // Функция для получения URL изображения (взята из Admin)
+  const getImageUrl = (image) => {
+    if (!image) return PLACEHOLDER_IMAGE; // Заглушка, если изображение отсутствует
+    if (USE_PROXY) {
+      // Используем прокси через сервер
+      const key = image.split("/").pop();
+      return `${PROXY_BASE_URL}${key}`;
+    }
+    // Используем прямой URL
+    return image;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -271,9 +288,13 @@ const Home = () => {
                       onClick={() => setSelectedStory(story)}
                     >
                       <img
-                        src={`https://nukesul-brepb-651f.twc1.net/uploads/${story.image}`}
+                        src={getImageUrl(story.image)}
                         alt="Story"
                         className="w-20 h-20 rounded-full object-cover hover:scale-110 transition border-4 border-orange-500"
+                        onError={(e) => {
+                          console.error(`Ошибка загрузки изображения истории: ${story.image}`);
+                          e.target.src = PLACEHOLDER_IMAGE;
+                        }}
                       />
                       <span className="mt-2 text-sm font-medium text-gray-700">Акция</span>
                     </div>
@@ -292,9 +313,13 @@ const Home = () => {
                       style={{ width: `${storyProgress}%`, transition: "width 0.05s linear" }}
                     ></div>
                     <img
-                      src={`https://nukesul-brepb-651f.twc1.net/uploads/${selectedStory.image}`}
+                      src={getImageUrl(selectedStory.image)}
                       alt="Selected Story"
                       className="w-full h-full object-contain"
+                      onError={(e) => {
+                        console.error(`Ошибка загрузки изображения истории: ${selectedStory.image}`);
+                        e.target.src = PLACEHOLDER_IMAGE;
+                      }}
                     />
                     <button
                       className="absolute top-2 right-2 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition"
@@ -442,10 +467,13 @@ const Home = () => {
                               >
                                 <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
                                 <img
-                                  src={`https://nukesul-brepb-651f.twc1.net/uploads/${product.image}`}
+                                  src={getImageUrl(product.image)}
                                   alt={product.name}
                                   className="w-full h-48 object-cover rounded-t-lg"
-                                  onError={(e) => (e.target.src = "https://via.placeholder.com/300")}
+                                  onError={(e) => {
+                                    console.error(`Ошибка загрузки изображения продукта: ${product.image}`);
+                                    e.target.src = PLACEHOLDER_IMAGE;
+                                  }}
                                 />
                                 <div className="mt-4">
                                   <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
@@ -525,10 +553,13 @@ const Home = () => {
 
                   <div className="p-6">
                     <img
-                      src={`https://nukesul-brepb-651f.twc1.net/uploads/${selectedProduct.image}`}
+                      src={getImageUrl(selectedProduct.image)}
                       alt={selectedProduct.name}
                       className="w-full h-64 object-cover rounded-lg mb-4"
-                      onError={(e) => (e.target.src = "https://via.placeholder.com/300")}
+                      onError={(e) => {
+                        console.error(`Ошибка загрузки изображения продукта: ${selectedProduct.image}`);
+                        e.target.src = PLACEHOLDER_IMAGE;
+                      }}
                     />
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">{selectedProduct.name}</h3>
                     <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
@@ -609,9 +640,13 @@ const Home = () => {
                       {cart.map((item, index) => (
                         <div key={index} className="flex items-start py-4 border-b">
                           <img
-                            src={`https://nukesul-brepb-651f.twc1.net/uploads/${item.image}`}
+                            src={getImageUrl(item.image)}
                             alt={item.name}
                             className="w-16 h-16 object-cover rounded-lg mr-4"
+                            onError={(e) => {
+                              console.error(`Ошибка загрузки изображения в корзине: ${item.image}`);
+                              e.target.src = PLACEHOLDER_IMAGE;
+                            }}
                           />
                           <div className="flex-grow">
                             <div className="flex justify-between">
