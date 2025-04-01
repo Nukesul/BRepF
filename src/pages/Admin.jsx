@@ -200,11 +200,10 @@ const Admin = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${
-                activeTab === tab
+              className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === tab
                   ? "bg-orange-600 text-white shadow-lg"
                   : "bg-white text-orange-600 border border-orange-600 hover:bg-orange-100"
-              }`}
+                }`}
             >
               {tab === "products" && "Продукты"}
               {tab === "branches" && "Филиалы"}
@@ -391,11 +390,11 @@ const Admin = () => {
                   <div key={p.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <div className="flex items-center space-x-4">
                       {p.image && (
-                       <img
-                       src={`https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/${p.image}`}
-                       alt="Story"
-                       className="w-full h-32 object-cover rounded-lg mb-2"
-                     />
+                        <img
+                          src={`https://s3.twcstorage.ru/${p.image}`}
+                          alt={p.name}
+                          className="w-24 h-24 object-cover rounded-lg mb-2"
+                        />
                       )}
                       <div>
                         <p className="font-bold text-gray-800">{p.name}</p>
@@ -406,10 +405,10 @@ const Admin = () => {
                           {p.price_small && p.price_medium && p.price_large
                             ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом, L: ${p.price_large} Сом`
                             : p.price_small && p.price_medium
-                            ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом`
-                            : p.price_single
-                            ? `${p.price_single} Сом`
-                            : "Не указаны"}
+                              ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом`
+                              : p.price_single
+                                ? `${p.price_single} Сом`
+                                : "Не указаны"}
                         </p>
                       </div>
                     </div>
@@ -575,7 +574,7 @@ const Admin = () => {
                     required
                   />
                 </div>
-                <div>                       
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Категория</label>
                   <select
                     value={subCategory.categoryId}
