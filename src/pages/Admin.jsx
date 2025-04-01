@@ -392,7 +392,7 @@ const Admin = () => {
                     <div className="flex items-center space-x-4">
                       {p.image && (
                        <img
-                       src={`https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/${s.image}`}
+                       src={`https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/${p.image}`}
                        alt="Story"
                        className="w-full h-32 object-cover rounded-lg mb-2"
                      />
