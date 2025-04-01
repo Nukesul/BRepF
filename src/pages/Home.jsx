@@ -82,6 +82,7 @@ const Home = () => {
     } else {
       setFilteredProducts([]);
       setShowBranchSelection(true);
+      setActiveCategory(null);
     }
   }, [selectedBranch, allProducts, categories]);
 
@@ -106,7 +107,7 @@ const Home = () => {
   const getDiscountedPrice = (price, productId) => {
     if (price === null || price === undefined) return 0;
     const discount = discounts.find((d) => d.product_id === productId);
-    const basePrice = Number(price);
+    const basePrice = Number(price) || 0;
     const baseDiscount = discount ? basePrice * (1 - discount.discount_percent / 100) : basePrice;
     return promoDiscount ? baseDiscount * (1 - promoDiscount / 100) : baseDiscount;
   };
@@ -125,6 +126,7 @@ const Home = () => {
   };
 
   const handleNextStory = () => {
+    if (!selectedStory || stories.length === 0) return;
     const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
     const nextIndex = (currentIndex + 1) % stories.length;
     setSelectedStory(stories[nextIndex]);
@@ -132,6 +134,7 @@ const Home = () => {
   };
 
   const handlePrevStory = () => {
+    if (!selectedStory || stories.length === 0) return;
     const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
     const prevIndex = (currentIndex - 1 + stories.length) % stories.length;
     setSelectedStory(stories[prevIndex]);
@@ -165,7 +168,7 @@ const Home = () => {
         ...product,
         size,
         quantity: 1,
-        finalPrice: finalPrice,
+        finalPrice,
       };
       setCart([...cart, newItem]);
     }
@@ -181,24 +184,23 @@ const Home = () => {
   };
 
   const updateQuantity = (index, newQuantity) => {
-    if (newQuantity < 1) return;
+    if (newQuantity < 1 || index < 0 || index >= cart.length) return;
     const newCart = [...cart];
     newCart[index].quantity = newQuantity;
     setCart(newCart);
   };
 
   const calculateSubtotal = () => {
-    return cart.reduce((total, item) => total + (item.finalPrice || 0) * item.quantity, 0);
+    return cart.reduce((total, item) => total + (item.finalPrice || 0) * (item.quantity || 1), 0);
   };
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const totalWithDelivery = subtotal + (deliveryOption === "delivery" ? 200 : 0);
-    return totalWithDelivery;
+    return subtotal + (deliveryOption === "delivery" ? deliveryCost : 0);
   };
 
   const applyPromoCode = async () => {
-    if (!promoCode) {
+    if (!promoCode.trim()) {
       setPromoError("Введите промокод");
       return;
     }
@@ -206,7 +208,7 @@ const Home = () => {
       const response = await fetch(`https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`);
       if (!response.ok) throw new Error("Промокод не найден или неактивен");
       const promo = await response.json();
-      setPromoDiscount(promo.discount_percent);
+      setPromoDiscount(promo.discount_percent || 0);
       setPromoError(null);
       alert(`Промокод "${promo.code}" применен! Скидка ${promo.discount_percent}%`);
     } catch (err) {
@@ -242,21 +244,18 @@ const Home = () => {
   };
 
   const hasMultiplePrices = (product) => {
-    return product.price_small || product.price_medium || product.price_large;
+    return Boolean(product.price_small || product.price_medium || product.price_large);
   };
 
-  // Функция для формирования URL изображения через маршрут /product-image/:key
   const getImageUrl = (imagePath) => {
-    if (!imagePath) return "https://via.placeholder.com/300"; // Запасное изображение, если путь пустой
-    // Извлекаем имя файла из полного пути, если он содержит boody-images/
+    if (!imagePath) return "https://via.placeholder.com/300";
     const fileName = imagePath.includes("boody-images/") ? imagePath.split("boody-images/")[1] : imagePath;
     return `https://nukesul-brepb-651f.twc1.net/product-image/${fileName}`;
   };
 
-  // Обработчик ошибки загрузки изображения
   const handleImageError = (e) => {
     console.error(`Ошибка загрузки изображения: ${e.target.src}`);
-    e.target.src = "https://via.placeholder.com/300"; // Запасное изображение
+    e.target.src = "https://via.placeholder.com/300";
   };
 
   return (
@@ -273,7 +272,6 @@ const Home = () => {
           </div>
         ) : (
           <>
-            {/* Истории */}
             <section id="stories" className="mb-12">
               <h2 className="text-4xl font-extrabold text-gray-800 mb-6 text-center">Акции и новости</h2>
               <div className="flex justify-center">
@@ -286,7 +284,7 @@ const Home = () => {
                     >
                       <img
                         src={getImageUrl(story.image)}
-                        alt="Story"
+                        alt={story.title || "Story"}
                         className="w-20 h-20 rounded-full object-cover hover:scale-110 transition border-4 border-orange-500"
                         onError={handleImageError}
                       />
@@ -305,10 +303,10 @@ const Home = () => {
                     <div
                       className="absolute top-0 left-0 w-full h-1 bg-orange-500"
                       style={{ width: `${storyProgress}%`, transition: "width 0.05s linear" }}
-                    ></div>
+                    />
                     <img
                       src={getImageUrl(selectedStory.image)}
-                      alt="Selected Story"
+                      alt={selectedStory.title || "Selected Story"}
                       className="w-full h-full object-contain"
                       onError={handleImageError}
                     />
@@ -335,7 +333,6 @@ const Home = () => {
               )}
             </section>
 
-            {/* Выбор филиала */}
             {showBranchSelection && (
               <section id="branches" className="mb-12">
                 <h2 className="text-4xl font-extrabold text-gray-800 mb-6 text-center">Выберите филиал</h2>
@@ -357,12 +354,11 @@ const Home = () => {
               </section>
             )}
 
-            {/* Продукты */}
             {selectedBranch && (
               <section id="products" className="mb-12">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-4xl font-extrabold text-gray-800">
-                    Меню в {branches.find((b) => b.id === selectedBranch)?.name}
+                    Меню в {branches.find((b) => b.id === selectedBranch)?.name || "Выбранный филиал"}
                   </h2>
                   <div className="flex items-center space-x-4">
                     <button
@@ -412,7 +408,6 @@ const Home = () => {
                   </div>
                 </div>
 
-                {/* Навигация по категориям */}
                 <div className="flex overflow-x-auto pb-4 mb-6 scrollbar-hide">
                   <div className="flex space-x-2">
                     {getAvailableCategories().map((category) => (
@@ -422,7 +417,7 @@ const Home = () => {
                         className={`px-4 py-2 rounded-full whitespace-nowrap transition ${
                           activeCategory === category.id
                             ? "bg-orange-500 text-white"
-                            : "bg-white text-gray-800 border border-gray-300"
+                            : "bg-white text-gray-800 border border-gray-300 hover:bg-gray-100"
                         }`}
                       >
                         {category.name}
@@ -444,9 +439,9 @@ const Home = () => {
                           className="scroll-mt-24"
                         >
                           <div className="flex items-center mb-6">
-                            <div className="flex-grow h-px bg-orange-200"></div>
+                            <div className="flex-grow h-px bg-orange-200" />
                             <h3 className="mx-4 text-2xl font-bold text-gray-800 text-center">{category.name}</h3>
-                            <div className="flex-grow h-px bg-orange-200"></div>
+                            <div className="flex-grow h-px bg-orange-200" />
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -456,7 +451,7 @@ const Home = () => {
                                 className="p-6 bg-white rounded-xl shadow-md hover:shadow-xl transition transform hover:scale-[1.02] border-2 border-transparent hover:border-orange-400 relative overflow-hidden"
                                 onClick={() => handleProductClick(product)}
                               >
-                                <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
+                                <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300" />
                                 <img
                                   src={getImageUrl(product.image)}
                                   alt={product.name}
@@ -525,7 +520,6 @@ const Home = () => {
               </section>
             )}
 
-            {/* Модальное окно продукта */}
             {selectedProduct && (
               <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
                 <div
@@ -554,7 +548,7 @@ const Home = () => {
                         <h4 className="text-lg font-semibold text-gray-800 mb-3">Выберите размер:</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {["small", "medium", "large"].map((size) =>
-                            selectedProduct[`price_${size}`] && (
+                            selectedProduct[`price_${size}`] ? (
                               <button
                                 key={size}
                                 onClick={() => addToCart(selectedProduct, size)}
@@ -573,7 +567,7 @@ const Home = () => {
                                   </span>
                                 )}
                               </button>
-                            )
+                            ) : null
                           )}
                         </div>
                       </div>
@@ -602,9 +596,8 @@ const Home = () => {
               </div>
             )}
 
-            {/* Корзина */}
             {showCart && cart.length > 0 && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowCart(false)}></div>
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowCart(false)} />
             )}
             <div
               className={`fixed top-0 right-0 h-full bg-white shadow-xl z-50 w-full max-w-md transform transition-transform duration-300 ease-in-out ${
@@ -640,19 +633,21 @@ const Home = () => {
                                   </p>
                                 )}
                               </div>
-                              <p className="text-orange-600 font-bold">{formatPrice(item.finalPrice)} Сом</p>
+                              <p className="text-orange-600 font-bold">
+                                {formatPrice(item.finalPrice * item.quantity)} Сом
+                              </p>
                             </div>
                             <div className="flex items-center mt-2">
                               <button
                                 onClick={() => updateQuantity(index, item.quantity - 1)}
-                                className="w-8 h-8 flex items-center justify-center border rounded-lg"
+                                className="w-8 h-8 flex items-center justify-center border rounded-lg text-gray-700 hover:bg-gray-100"
                               >
                                 -
                               </button>
                               <span className="mx-2 w-8 text-center">{item.quantity}</span>
                               <button
                                 onClick={() => updateQuantity(index, item.quantity + 1)}
-                                className="w-8 h-8 flex items-center justify-center border rounded-lg"
+                                className="w-8 h-8 flex items-center justify-center border rounded-lg text-gray-700 hover:bg-gray-100"
                               >
                                 +
                               </button>
@@ -701,7 +696,10 @@ const Home = () => {
                             className={`p-4 border-2 rounded-lg cursor-pointer ${
                               deliveryOption === "pickup" ? "border-orange-500 bg-orange-50" : "border-gray-300"
                             }`}
-                            onClick={() => setDeliveryOption("pickup")}
+                            onClick={() => {
+                              setDeliveryOption("pickup");
+                              setDeliveryCost(0);
+                            }}
                           >
                             <div className="flex justify-between items-center">
                               <div>
@@ -818,6 +816,7 @@ const Home = () => {
                           </p>
                         )}
                       </div>
+
                       <div>
                         <h3 className="text-lg font-semibold mb-3">Ваш заказ</h3>
                         <div className="space-y-3">
@@ -830,6 +829,7 @@ const Home = () => {
                                     {item.size === "small" ? "Маленькая" : item.size === "medium" ? "Средняя" : "Большая"}
                                   </p>
                                 )}
+                                <p className="text-sm text-gray-600">x{item.quantity}</p>
                               </div>
                               <p className="text-orange-600 font-bold">
                                 {formatPrice(item.finalPrice * item.quantity)} Сом
@@ -859,7 +859,10 @@ const Home = () => {
                         <div className="flex justify-between font-bold text-lg">
                           <span>Итого:</span>
                           <span className="text-orange-600">
-                            {formatPrice(calculateTotal() - (promoDiscount > 0 ? calculateSubtotal() * (promoDiscount / 100) : 0))} Сом
+                            {formatPrice(
+                              calculateTotal() - (promoDiscount > 0 ? calculateSubtotal() * (promoDiscount / 100) : 0)
+                            )}{" "}
+                            Сом
                           </span>
                         </div>
                       </div>
