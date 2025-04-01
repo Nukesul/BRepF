@@ -855,7 +855,6 @@ const Admin = () => {
           </section>
         )}
 
-        {/* Stories Section */}
         {activeTab === "stories" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление историями</h2>
