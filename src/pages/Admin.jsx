@@ -80,11 +80,12 @@ const Admin = () => {
     fetchData();
   }, [navigate]);
 
-  // Функция для формирования URL изображения
+  // Функция для формирования URL изображения через маршрут /product-image/:key
   const getImageUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/300"; // Запасное изображение, если путь пустой
-    const url = `https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/boody-images/${imagePath}`;
-    return url;
+    // Извлекаем имя файла из полного пути, если он содержит boody-images/
+    const fileName = imagePath.includes("boody-images/") ? imagePath.split("boody-images/")[1] : imagePath;
+    return `https://nukesul-brepb-651f.twc1.net/product-image/${fileName}`;
   };
 
   // Обработчик ошибки загрузки изображения
@@ -105,20 +106,13 @@ const Admin = () => {
         const formData = new FormData();
         for (const key in data) {
           if (data[key] !== null && data[key] !== "" && key !== "priceCount") {
-            if (key === "image" && data[key] instanceof File) {
-              // Добавляем префикс boody-images к имени файла
-              const fileName = `boody-images/${data[key].name}`;
-              formData.append(key, data[key], fileName);
-            } else {
-              formData.append(key, data[key]);
-            }
+            formData.append(key, data[key]);
           }
         }
         response = await fetch(finalUrl, {
           method,
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-amz-acl": "public-read", // Делаем файл публичным
           },
           body: formData,
         });
@@ -232,7 +226,7 @@ const Admin = () => {
               className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${
                 activeTab === tab
                   ? "bg-orange-600 text-white shadow-lg"
-                  : "bg-white text-orange-600 border border Search results border-orange-600 hover:bg-orange-100"
+                  : "bg-white text-orange-600 border border-orange-600 hover:bg-orange-100"
               }`}
             >
               {tab === "products" && "Продукты"}
