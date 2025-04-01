@@ -247,10 +247,9 @@ const Home = () => {
 
   // Функция для проверки URL изображения
   const getImageUrl = (imagePath) => {
-    const url = `https://nukesul-brepb-651f.twc1.net/uploads/${imagePath}`;
+    const url = `https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/${imagePath}`;
     return url;
   };
-
   // Обработчик ошибки загрузки изображения
   const handleImageError = (e) => {
     console.error(`Ошибка загрузки изображения: ${e.target.src}`);

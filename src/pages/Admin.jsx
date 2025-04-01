@@ -391,11 +391,11 @@ const Admin = () => {
                   <div key={p.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <div className="flex items-center space-x-4">
                       {p.image && (
-                        <img
-                          src={`https://nukesul-brepb-651f.twc1.net/uploads/${p.image}`}
-                          alt={p.name}
-                          className="w-16 h-16 object-cover rounded-full"
-                        />
+                       <img
+                       src={`https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/${s.image}`}
+                       alt="Story"
+                       className="w-full h-32 object-cover rounded-lg mb-2"
+                     />
                       )}
                       <div>
                         <p className="font-bold text-gray-800">{p.name}</p>
