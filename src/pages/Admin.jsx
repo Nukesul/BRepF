@@ -201,8 +201,8 @@ const Admin = () => {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === tab
-                  ? "bg-orange-600 text-white shadow-lg"
-                  : "bg-white text-orange-600 border border-orange-600 hover:bg-orange-100"
+                ? "bg-orange-600 text-white shadow-lg"
+                : "bg-white text-orange-600 border border-orange-600 hover:bg-orange-100"
                 }`}
             >
               {tab === "products" && "Продукты"}
@@ -389,12 +389,17 @@ const Admin = () => {
                 {products.map((p) => (
                   <div key={p.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <div className="flex items-center space-x-4">
-                      {p.image && (
+                      {p.image ? (
                         <img
-                          src={`https://s3.twcstorage.ru/${p.image}`}
+                          src={`https://s3.twcstorage.ru/${p.image}`} // Путь уже правильный
                           alt={p.name}
                           className="w-24 h-24 object-cover rounded-lg mb-2"
+                          onError={(e) => (e.target.style.display = "none")} // Скрываем, если ошибка загрузки
                         />
+                      ) : (
+                        <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-lg">
+                          <span className="text-gray-500 text-sm">Нет изображения</span>
+                        </div>
                       )}
                       <div>
                         <p className="font-bold text-gray-800">{p.name}</p>
@@ -811,11 +816,18 @@ const Admin = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {stories.map((s) => (
                   <div key={s.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
-                    <img
-                      src={`https://nukesul-brepb-651f.twc1.net/uploads/${s.image}`}
-                      alt="Story"
-                      className="w-full h-32 object-cover rounded-lg mb-2"
-                    />
+                    {s.image ? (
+                      <img
+                        src={`https://s3.twcstorage.ru/${s.image}`} // Исправленный путь
+                        alt="Story"
+                        className="w-full h-32 object-cover rounded-lg mb-2"
+                        onError={(e) => (e.target.style.display = "none")} // Скрываем, если ошибка загрузки
+                      />
+                    ) : (
+                      <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-lg">
+                        <span className="text-gray-500 text-sm">Нет изображения</span>
+                      </div>
+                    )}
                     <div className="flex justify-center space-x-2">
                       <button
                         onClick={() => handleEdit(s, setStory, resetStory)}
