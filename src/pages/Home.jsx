@@ -26,9 +26,7 @@ const Home = () => {
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoError, setPromoError] = useState(null);
   const categoriesRef = useRef({});
-  const user = JSON.parse(localStorage.getItem("user")) || { id: "default-user" }; // Добавляем userId
-
-  const API_URL = "http://localhost:3001"; // URL вашего сервера
+  const user = JSON.parse(localStorage.getItem("user")) || null;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,15 +34,27 @@ const Home = () => {
       setError(null);
 
       try {
-        const response = await fetch(`${API_URL}/api/data`);
-        if (!response.ok) throw new Error("Ошибка загрузки данных");
-        const data = await response.json();
+        const endpoints = [
+          "branches",
+          "products",
+          "discounts",
+          "stories",
+          "categories",
+        ];
+        const responses = await Promise.all(
+          endpoints.map((endpoint) =>
+            fetch(`https://nukesul-brepb-651f.twc1.net/${endpoint}`).then((res) => {
+              if (!res.ok) throw new Error(`Ошибка загрузки ${endpoint}`);
+              return res.json();
+            })
+          )
+        );
 
-        setBranches(data.branches);
-        setAllProducts(data.products);
-        setDiscounts(data.discounts);
-        setStories(data.stories);
-        setCategories(data.categories);
+        setBranches(responses[0]);
+        setAllProducts(responses[1]);
+        setDiscounts(responses[2]);
+        setStories(responses[3]);
+        setCategories(responses[4]);
       } catch (err) {
         console.error("Ошибка загрузки данных:", err);
         setError("Не удалось загрузить данные. Проверьте подключение или попробуйте позже.");
@@ -52,21 +62,8 @@ const Home = () => {
         setLoading(false);
       }
     };
-
-    const fetchCart = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/cart/${user.id}`);
-        if (!response.ok) throw new Error("Ошибка загрузки корзины");
-        const cartData = await response.json();
-        setCart(cartData);
-      } catch (err) {
-        console.error("Ошибка загрузки корзины:", err);
-      }
-    };
-
     fetchData();
-    fetchCart();
-  }, [user.id]);
+  }, []);
 
   useEffect(() => {
     if (selectedBranch) {
@@ -158,52 +155,45 @@ const Home = () => {
     setSelectedProduct(product);
   };
 
-  const addToCart = async (product, size = null) => {
+  const addToCart = (product, size = null) => {
     if (!product) return;
-    try {
-      const response = await fetch(`${API_URL}/api/cart/${user.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product, size, discounts, promoDiscount }),
-      });
-      if (!response.ok) throw new Error("Ошибка добавления в корзину");
-      const updatedCart = await response.json();
-      setCart(updatedCart);
-      setSelectedProduct(null);
-      setShowCart(true);
-    } catch (err) {
-      console.error("Ошибка добавления в корзину:", err);
+    const price = size ? product[`price_${size}`] : product.price_single;
+    const finalPrice = getDiscountedPrice(price, product.id);
+
+    const existingItemIndex = cart.findIndex(
+      (item) => item.id === product.id && item.size === size
+    );
+
+    if (existingItemIndex >= 0) {
+      const newCart = [...cart];
+      newCart[existingItemIndex].quantity += 1;
+      setCart(newCart);
+    } else {
+      const newItem = {
+        ...product,
+        size,
+        quantity: 1,
+        finalPrice,
+      };
+      setCart([...cart, newItem]);
     }
+
+    setSelectedProduct(null);
+    setShowCart(true);
   };
 
-  const removeFromCart = async (index) => {
+  const removeFromCart = (index) => {
     if (index < 0 || index >= cart.length) return;
-    try {
-      const response = await fetch(`${API_URL}/api/cart/${user.id}/${index}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Ошибка удаления из корзины");
-      const updatedCart = await response.json();
-      setCart(updatedCart);
-    } catch (err) {
-      console.error("Ошибка удаления из корзины:", err);
-    }
+    const newCart = [...cart];
+    newCart.splice(index, 1);
+    setCart(newCart);
   };
 
-  const updateQuantity = async (index, newQuantity) => {
+  const updateQuantity = (index, newQuantity) => {
     if (newQuantity < 1 || index < 0 || index >= cart.length) return;
-    try {
-      const response = await fetch(`${API_URL}/api/cart/${user.id}/${index}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: newQuantity }),
-      });
-      if (!response.ok) throw new Error("Ошибка обновления количества");
-      const updatedCart = await response.json();
-      setCart(updatedCart);
-    } catch (err) {
-      console.error("Ошибка обновления количества:", err);
-    }
+    const newCart = [...cart];
+    newCart[index].quantity = newQuantity;
+    setCart(newCart);
   };
 
   const calculateSubtotal = () => {
@@ -222,22 +212,15 @@ const Home = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/promo-codes/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ promoCode }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error);
-      }
+      const response = await fetch(`https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`);
+      if (!response.ok) throw new Error("Промокод не найден или неактивен");
       const promo = await response.json();
       setPromoDiscount(promo.discount_percent || 0);
       setPromoError(null);
       alert(`Промокод "${promo.code}" применен! Скидка ${promo.discount_percent}%`);
     } catch (err) {
       setPromoDiscount(0);
-      setPromoError(err.message || "Неверный или неактивный промокод");
+      setPromoError("Неверный или неактивный промокод");
       console.error("Ошибка применения промокода:", err);
     }
   };
@@ -252,24 +235,15 @@ const Home = () => {
     setShowCheckout(false);
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = () => {
     if (cart.length === 0) return;
-    try {
-      const response = await fetch(`${API_URL}/api/orders/${user.id}`, {
-        method: "POST",
-      });
-      if (!response.ok) throw new Error("Ошибка оформления заказа");
-      const result = await response.json();
-      alert(result.message);
-      setCart([]);
-      setShowCart(false);
-      setShowCheckout(false);
-      setPromoCode("");
-      setPromoDiscount(0);
-      setPromoError(null);
-    } catch (err) {
-      console.error("Ошибка оформления заказа:", err);
-    }
+    alert("Заказ успешно оформлен!");
+    setCart([]);
+    setShowCart(false);
+    setShowCheckout(false);
+    setPromoCode("");
+    setPromoDiscount(0);
+    setPromoError(null);
   };
 
   const getAvailableCategories = () => {
