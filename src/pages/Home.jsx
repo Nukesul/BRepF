@@ -2,10 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-// Константы для переключения между прямым URL и прокси
-const USE_PROXY = false; // Установите true, если нужно использовать прокси через сервер
-const PROXY_BASE_URL = "https://nukesul-brepb-651f.twc1.net/product-image/";
-const PLACEHOLDER_IMAGE = "/placeholder-image.jpg"; // Укажи путь к локальной заглушке или URL
+// Константы
+const BASE_IMAGE_URL = "https://nukesul-brepb-651f.twc1.net/uploads/";
+const PLACEHOLDER_IMAGE = "https://via.placeholder.com/300?text=Image+Not+Found";
 
 const Home = () => {
   const [branches, setBranches] = useState([]);
@@ -33,48 +32,47 @@ const Home = () => {
   const categoriesRef = useRef({});
   const user = JSON.parse(localStorage.getItem("user")) || null;
 
-  // Функция для получения URL изображения (взята из Admin)
+  // Функция для получения URL изображения
   const getImageUrl = (image) => {
-    if (!image) return PLACEHOLDER_IMAGE; // Заглушка, если изображение отсутствует
-    if (USE_PROXY) {
-      // Используем прокси через сервер
-      const key = image.split("/").pop();
-      return `${PROXY_BASE_URL}${key}`;
-    }
-    // Используем прямой URL
-    return image;
+    if (!image) return PLACEHOLDER_IMAGE;
+    return `${BASE_IMAGE_URL}${image}`;
   };
 
+  // Загрузка данных с API
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const [branchesRes, productsRes, discountsRes, storiesRes, categoriesRes] = await Promise.all([
-          fetch("https://nukesul-brepb-651f.twc1.net/branches"),
-          fetch("https://nukesul-brepb-651f.twc1.net/products"),
-          fetch("https://nukesul-brepb-651f.twc1.net/discounts"),
-          fetch("https://nukesul-brepb-651f.twc1.net/stories"),
-          fetch("https://nukesul-brepb-651f.twc1.net/categories"),
-        ]);
+        const endpoints = [
+          "branches",
+          "products",
+          "discounts",
+          "stories",
+          "categories",
+        ];
+        const responses = await Promise.all(
+          endpoints.map((endpoint) =>
+            fetch(`https://nukesul-brepb-651f.twc1.net/${endpoint}`)
+          )
+        );
 
-        if (!branchesRes.ok) throw new Error("Ошибка загрузки филиалов");
-        if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
-        if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
-        if (!storiesRes.ok) throw new Error("Ошибка загрузки историй");
-        if (!categoriesRes.ok) throw new Error("Ошибка загрузки категорий");
+        const data = await Promise.all(
+          responses.map(async (res, index) => {
+            if (!res.ok) throw new Error(`Ошибка загрузки ${endpoints[index]}`);
+            return res.json();
+          })
+        );
 
-        const branchesData = await branchesRes.json();
-        const productsData = await productsRes.json();
-        setBranches(branchesData);
-        setAllProducts(productsData);
-        setDiscounts(await discountsRes.json());
-        setStories(await storiesRes.json());
-        setCategories(await categoriesRes.json());
+        setBranches(data[0]);
+        setAllProducts(data[1]);
+        setDiscounts(data[2]);
+        setStories(data[3]);
+        setCategories(data[4]);
       } catch (err) {
         console.error("Ошибка загрузки данных:", err);
-        setError("Не удалось загрузить данные. Проверьте подключение к серверу.");
+        setError("Не удалось загрузить данные. Проверьте подключение к интернету.");
       } finally {
         setLoading(false);
       }
@@ -82,6 +80,7 @@ const Home = () => {
     fetchData();
   }, []);
 
+  // Фильтрация продуктов по выбранному филиалу
   useEffect(() => {
     if (selectedBranch) {
       const branchProducts = allProducts.filter((product) => product.branch_id === selectedBranch);
@@ -99,9 +98,11 @@ const Home = () => {
     } else {
       setFilteredProducts([]);
       setShowBranchSelection(true);
+      setActiveCategory(null);
     }
   }, [selectedBranch, allProducts, categories]);
 
+  // Логика прогресса историй
   useEffect(() => {
     if (selectedStory) {
       setStoryProgress(0);
@@ -113,26 +114,29 @@ const Home = () => {
             setSelectedStory(stories[nextIndex]);
             return 0;
           }
-          return prev + 1;
+          return prev + 2; // Ускоряем прогресс (50мс * 50 = 2.5с на историю)
         });
       }, 50);
       return () => clearInterval(timer);
     }
   }, [selectedStory, stories]);
 
+  // Расчет цены со скидкой
   const getDiscountedPrice = (price, productId) => {
-    if (price === null || price === undefined) return 0;
+    if (!price) return 0;
     const discount = discounts.find((d) => d.product_id === productId);
     const basePrice = Number(price);
     const baseDiscount = discount ? basePrice * (1 - discount.discount_percent / 100) : basePrice;
     return promoDiscount ? baseDiscount * (1 - promoDiscount / 100) : baseDiscount;
   };
 
+  // Форматирование цены
   const formatPrice = (price) => {
-    if (price === null || price === undefined || isNaN(price)) return "0.00";
+    if (!price || isNaN(price)) return "0.00";
     return Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   };
 
+  // Прокрутка к категории
   const scrollToCategory = (categoryId) => {
     setActiveCategory(categoryId);
     const element = categoriesRef.current[categoryId];
@@ -141,6 +145,7 @@ const Home = () => {
     }
   };
 
+  // Переключение историй
   const handleNextStory = () => {
     const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
     const nextIndex = (currentIndex + 1) % stories.length;
@@ -165,6 +170,7 @@ const Home = () => {
     setSelectedProduct(product);
   };
 
+  // Добавление в корзину
   const addToCart = (product, size = null) => {
     const price = size ? product[`price_${size}`] : product.price_single;
     const finalPrice = getDiscountedPrice(price, product.id);
@@ -178,13 +184,10 @@ const Home = () => {
       newCart[existingItemIndex].quantity += 1;
       setCart(newCart);
     } else {
-      const newItem = {
-        ...product,
-        size,
-        quantity: 1,
-        finalPrice: finalPrice,
-      };
-      setCart([...cart, newItem]);
+      setCart([
+        ...cart,
+        { ...product, size, quantity: 1, finalPrice },
+      ]);
     }
 
     setSelectedProduct(null);
@@ -192,9 +195,7 @@ const Home = () => {
   };
 
   const removeFromCart = (index) => {
-    const newCart = [...cart];
-    newCart.splice(index, 1);
-    setCart(newCart);
+    setCart(cart.filter((_, i) => i !== index));
   };
 
   const updateQuantity = (index, newQuantity) => {
@@ -210,17 +211,19 @@ const Home = () => {
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const totalWithDelivery = subtotal + (deliveryOption === "delivery" ? 200 : 0);
-    return totalWithDelivery;
+    return subtotal + (deliveryOption === "delivery" ? deliveryCost : 0);
   };
 
+  // Применение промокода
   const applyPromoCode = async () => {
-    if (!promoCode) {
+    if (!promoCode.trim()) {
       setPromoError("Введите промокод");
       return;
     }
     try {
-      const response = await fetch(`https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`);
+      const response = await fetch(
+        `https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`
+      );
       if (!response.ok) throw new Error("Промокод не найден или неактивен");
       const promo = await response.json();
       setPromoDiscount(promo.discount_percent);
@@ -252,7 +255,7 @@ const Home = () => {
   };
 
   const getAvailableCategories = () => {
-    if (!selectedBranch || filteredProducts.length === 0) return [];
+    if (!selectedBranch || !filteredProducts.length) return [];
     return categories.filter((category) =>
       filteredProducts.some((product) => product.category_id === category.id)
     );
@@ -265,20 +268,28 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white">
       <Header user={user} />
-      <main className="flex-grow max-w-6xl mx-auto p-6 space-y-12">
+      <main className="flex-grow max-w-6xl mx-auto p-4 sm:p-6 space-y-12">
         {loading ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 animate-pulse">
             <p className="text-xl text-gray-600">Загрузка данных...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-md">
             <p className="text-xl text-red-600">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+            >
+              Попробовать снова
+            </button>
           </div>
         ) : (
           <>
             {/* Истории */}
             <section id="stories" className="mb-12">
-              <h2 className="text-4xl font-extrabold text-gray-800 mb-6 text-center">Акции и новости</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 text-center">
+                Акции и новости
+              </h2>
               <div className="flex justify-center">
                 <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide max-w-full">
                   {stories.map((story) => (
@@ -289,12 +300,9 @@ const Home = () => {
                     >
                       <img
                         src={getImageUrl(story.image)}
-                        alt="Story"
+                        alt={story.title || "Story"}
                         className="w-20 h-20 rounded-full object-cover hover:scale-110 transition border-4 border-orange-500"
-                        onError={(e) => {
-                          console.error(`Ошибка загрузки изображения истории: ${story.image}`);
-                          e.target.src = PLACEHOLDER_IMAGE;
-                        }}
+                        onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
                       />
                       <span className="mt-2 text-sm font-medium text-gray-700">Акция</span>
                     </div>
@@ -309,17 +317,14 @@ const Home = () => {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div
-                      className="absolute top-0 left-0 w-full h-1 bg-orange-500"
+                      className="absolute top-0 left-0 h-1 bg-orange-500"
                       style={{ width: `${storyProgress}%`, transition: "width 0.05s linear" }}
-                    ></div>
+                    />
                     <img
                       src={getImageUrl(selectedStory.image)}
-                      alt="Selected Story"
+                      alt={selectedStory.title || "Selected Story"}
                       className="w-full h-full object-contain"
-                      onError={(e) => {
-                        console.error(`Ошибка загрузки изображения истории: ${selectedStory.image}`);
-                        e.target.src = PLACEHOLDER_IMAGE;
-                      }}
+                      onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
                     />
                     <button
                       className="absolute top-2 right-2 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition"
@@ -347,14 +352,16 @@ const Home = () => {
             {/* Выбор филиала */}
             {showBranchSelection && (
               <section id="branches" className="mb-12">
-                <h2 className="text-4xl font-extrabold text-gray-800 mb-6 text-center">Выберите филиал</h2>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 text-center">
+                  Выберите филиал
+                </h2>
                 <div className="flex flex-wrap gap-4 justify-center mb-6">
                   {branches.length > 0 ? (
                     branches.map((branch) => (
                       <button
                         key={branch.id}
                         onClick={() => setSelectedBranch(branch.id)}
-                        className="px-6 py-3 rounded-xl bg-white text-orange-600 border-2 border-orange-600 transition-all hover:shadow-lg hover:bg-orange-50 hover:scale-105"
+                        className="px-6 py-3 rounded-xl bg-white text-orange-600 border-2 border-orange-600 transition-all hover:shadow-lg hover:bg-orange-50 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       >
                         {branch.name}
                       </button>
@@ -369,14 +376,15 @@ const Home = () => {
             {/* Продукты */}
             {selectedBranch && (
               <section id="products" className="mb-12">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-4xl font-extrabold text-gray-800">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                  <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 text-center sm:text-left">
                     Меню в {branches.find((b) => b.id === selectedBranch)?.name}
                   </h2>
                   <div className="flex items-center space-x-4">
                     <button
                       onClick={() => setShowCart(!showCart)}
-                      className="relative flex items-center text-orange-600 hover:text-orange-800 transition"
+                      className="relative flex items-center text-orange-600 hover:text-orange-800 transition focus:outline-none"
+                      aria-label="Открыть корзину"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -400,7 +408,8 @@ const Home = () => {
                     </button>
                     <button
                       onClick={handleBackToBranches}
-                      className="flex items-center text-orange-600 hover:text-orange-800 transition"
+                      className="flex items-center text-orange-600 hover:text-orange-800 transition focus:outline-none"
+                      aria-label="Вернуться к выбору филиалов"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -422,29 +431,33 @@ const Home = () => {
                 </div>
 
                 {/* Навигация по категориям */}
-                <div className="flex overflow-x-auto pb-4 mb-6 scrollbar-hide">
-                  <div className="flex space-x-2">
-                    {getAvailableCategories().map((category) => (
-                      <button
-                        key={category.id}
-                        onClick={() => scrollToCategory(category.id)}
-                        className={`px-4 py-2 rounded-full whitespace-nowrap transition ${
-                          activeCategory === category.id
-                            ? "bg-orange-500 text-white"
-                            : "bg-white text-gray-800 border border-gray-300"
-                        }`}
-                      >
-                        {category.name}
-                      </button>
-                    ))}
+                {getAvailableCategories().length > 0 && (
+                  <div className="flex overflow-x-auto pb-4 mb-6 scrollbar-hide">
+                    <div className="flex space-x-2">
+                      {getAvailableCategories().map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => scrollToCategory(category.id)}
+                          className={`px-4 py-2 rounded-full whitespace-nowrap transition focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                            activeCategory === category.id
+                              ? "bg-orange-500 text-white"
+                              : "bg-white text-gray-800 border border-gray-300 hover:bg-gray-100"
+                          }`}
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {filteredProducts.length > 0 ? (
                   <div className="space-y-12">
                     {getAvailableCategories().map((category) => {
-                      const categoryProducts = filteredProducts.filter((p) => p.category_id === category.id);
-                      if (categoryProducts.length === 0) return null;
+                      const categoryProducts = filteredProducts.filter(
+                        (p) => p.category_id === category.id
+                      );
+                      if (!categoryProducts.length) return null;
 
                       return (
                         <div
@@ -453,27 +466,27 @@ const Home = () => {
                           className="scroll-mt-24"
                         >
                           <div className="flex items-center mb-6">
-                            <div className="flex-grow h-px bg-orange-200"></div>
-                            <h3 className="mx-4 text-2xl font-bold text-gray-800 text-center">{category.name}</h3>
-                            <div className="flex-grow h-px bg-orange-200"></div>
+                            <div className="flex-grow h-px bg-orange-200" />
+                            <h3 className="mx-4 text-2xl font-bold text-gray-800 text-center">
+                              {category.name}
+                            </h3>
+                            <div className="flex-grow h-px bg-orange-200" />
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                             {categoryProducts.map((product) => (
                               <div
                                 key={product.id}
-                                className="p-6 bg-white rounded-xl shadow-md hover:shadow-xl transition transform hover:scale-[1.02] border-2 border-transparent hover:border-orange-400 relative overflow-hidden"
+                                className="p-6 bg-white rounded-xl shadow-md hover:shadow-xl transition transform hover:scale-[1.02] border-2 border-transparent hover:border-orange-400 relative overflow-hidden cursor-pointer"
                                 onClick={() => handleProductClick(product)}
                               >
-                                <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
+                                <div className="absolute inset-0 bg-yellow-100 opacity-0 hover:opacity-20 transition-opacity duration-300" />
                                 <img
                                   src={getImageUrl(product.image)}
                                   alt={product.name}
                                   className="w-full h-48 object-cover rounded-t-lg"
-                                  onError={(e) => {
-                                    console.error(`Ошибка загрузки изображения продукта: ${product.image}`);
-                                    e.target.src = PLACEHOLDER_IMAGE;
-                                  }}
+                                  onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
+                                  loading="lazy"
                                 />
                                 <div className="mt-4">
                                   <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
@@ -545,8 +558,9 @@ const Home = () => {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
-                    className="absolute top-4 right-4 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition z-10"
+                    className="absolute top-4 right-4 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition z-10 focus:outline-none"
                     onClick={() => setSelectedProduct(null)}
+                    aria-label="Закрыть"
                   >
                     ✕
                   </button>
@@ -556,10 +570,8 @@ const Home = () => {
                       src={getImageUrl(selectedProduct.image)}
                       alt={selectedProduct.name}
                       className="w-full h-64 object-cover rounded-lg mb-4"
-                      onError={(e) => {
-                        console.error(`Ошибка загрузки изображения продукта: ${selectedProduct.image}`);
-                        e.target.src = PLACEHOLDER_IMAGE;
-                      }}
+                      onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
+                      loading="lazy"
                     />
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">{selectedProduct.name}</h3>
                     <p className="text-gray-600 mb-4">{selectedProduct.description}</p>
@@ -569,11 +581,11 @@ const Home = () => {
                         <h4 className="text-lg font-semibold text-gray-800 mb-3">Выберите размер:</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {["small", "medium", "large"].map((size) =>
-                            selectedProduct[`price_${size}`] && (
+                            selectedProduct[`price_${size}`] ? (
                               <button
                                 key={size}
                                 onClick={() => addToCart(selectedProduct, size)}
-                                className="p-3 border-2 border-orange-400 rounded-lg hover:bg-orange-50 transition flex flex-col items-center"
+                                className="p-3 border-2 border-orange-400 rounded-lg hover:bg-orange-50 transition flex flex-col items-center focus:outline-none focus:ring-2 focus:ring-orange-500"
                               >
                                 <span className="capitalize font-medium">
                                   {size === "small" ? "Маленькая" : size === "medium" ? "Средняя" : "Большая"}
@@ -588,7 +600,7 @@ const Home = () => {
                                   </span>
                                 )}
                               </button>
-                            )
+                            ) : null
                           )}
                         </div>
                       </div>
@@ -606,7 +618,7 @@ const Home = () => {
                         </div>
                         <button
                           onClick={() => addToCart(selectedProduct)}
-                          className="w-full mt-4 bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg"
+                          className="w-full mt-4 bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                         >
                           Добавить в корзину
                         </button>
@@ -619,7 +631,11 @@ const Home = () => {
 
             {/* Корзина */}
             {showCart && cart.length > 0 && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowCart(false)}></div>
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                onClick={() => setShowCart(false)}
+                aria-hidden="true"
+              />
             )}
             <div
               className={`fixed top-0 right-0 h-full bg-white shadow-xl z-50 w-full max-w-md transform transition-transform duration-300 ease-in-out ${
@@ -631,22 +647,24 @@ const Home = () => {
                   <>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold text-gray-800">Ваш заказ</h2>
-                      <button onClick={() => setShowCart(false)} className="text-gray-500 hover:text-gray-700">
+                      <button
+                        onClick={() => setShowCart(false)}
+                        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label="Закрыть корзину"
+                      >
                         ✕
                       </button>
                     </div>
 
                     <div className="flex-grow overflow-y-auto">
                       {cart.map((item, index) => (
-                        <div key={index} className="flex items-start py-4 border-b">
+                        <div key={`${item.id}-${item.size || "single"}`} className="flex items-start py-4 border-b">
                           <img
                             src={getImageUrl(item.image)}
                             alt={item.name}
                             className="w-16 h-16 object-cover rounded-lg mr-4"
-                            onError={(e) => {
-                              console.error(`Ошибка загрузки изображения в корзине: ${item.image}`);
-                              e.target.src = PLACEHOLDER_IMAGE;
-                            }}
+                            onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
+                            loading="lazy"
                           />
                           <div className="flex-grow">
                             <div className="flex justify-between">
@@ -658,25 +676,30 @@ const Home = () => {
                                   </p>
                                 )}
                               </div>
-                              <p className="text-orange-600 font-bold">{formatPrice(item.finalPrice)} Сом</p>
+                              <p className="text-orange-600 font-bold">
+                                {formatPrice(item.finalPrice * item.quantity)} Сом
+                              </p>
                             </div>
                             <div className="flex items-center mt-2">
                               <button
                                 onClick={() => updateQuantity(index, item.quantity - 1)}
-                                className="w-8 h-8 flex items-center justify-center border rounded-lg"
+                                className="w-8 h-8 flex items-center justify-center border rounded-lg hover:bg-gray-100 focus:outline-none"
+                                aria-label="Уменьшить количество"
                               >
                                 -
                               </button>
                               <span className="mx-2 w-8 text-center">{item.quantity}</span>
                               <button
                                 onClick={() => updateQuantity(index, item.quantity + 1)}
-                                className="w-8 h-8 flex items-center justify-center border rounded-lg"
+                                className="w-8 h-8 flex items-center justify-center border rounded-lg hover:bg-gray-100 focus:outline-none"
+                                aria-label="Увеличить количество"
                               >
                                 +
                               </button>
                               <button
                                 onClick={() => removeFromCart(index)}
-                                className="text-red-500 hover:text-red-700 ml-auto"
+                                className="text-red-500 hover:text-red-700 ml-auto focus:outline-none"
+                                aria-label="Удалить из корзины"
                               >
                                 Удалить
                               </button>
@@ -693,7 +716,7 @@ const Home = () => {
                       </div>
                       <button
                         onClick={handleCheckout}
-                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg"
+                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                       >
                         Оформить заказ
                       </button>
@@ -702,11 +725,19 @@ const Home = () => {
                 ) : (
                   <>
                     <div className="flex justify-between items-center mb-6">
-                      <button onClick={handleBackToCart} className="text-gray-500 hover:text-gray-700">
+                      <button
+                        onClick={handleBackToCart}
+                        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label="Вернуться к корзине"
+                      >
                         ← Назад
                       </button>
                       <h2 className="text-2xl font-bold text-gray-800">Оформление заказа</h2>
-                      <button onClick={() => setShowCart(false)} className="text-gray-500 hover:text-gray-700">
+                      <button
+                        onClick={() => setShowCart(false)}
+                        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label="Закрыть"
+                      >
                         ✕
                       </button>
                     </div>
@@ -716,7 +747,7 @@ const Home = () => {
                         <h3 className="text-lg font-semibold mb-3">Способ получения</h3>
                         <div className="space-y-3">
                           <div
-                            className={`p-4 border-2 rounded-lg cursor-pointer ${
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition ${
                               deliveryOption === "pickup" ? "border-orange-500 bg-orange-50" : "border-gray-300"
                             }`}
                             onClick={() => setDeliveryOption("pickup")}
@@ -745,7 +776,7 @@ const Home = () => {
                             </div>
                           </div>
                           <div
-                            className={`p-4 border-2 rounded-lg cursor-pointer ${
+                            className={`p-4 border-2 rounded-lg cursor-pointer transition ${
                               deliveryOption === "delivery" ? "border-orange-500 bg-orange-50" : "border-gray-300"
                             }`}
                             onClick={() => {
@@ -784,28 +815,40 @@ const Home = () => {
                         <h3 className="text-lg font-semibold mb-3">Контактные данные</h3>
                         <div className="space-y-3">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name">
+                              Имя
+                            </label>
                             <input
+                              id="name"
                               type="text"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                               placeholder="Ваше имя"
+                              required
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="phone">
+                              Телефон
+                            </label>
                             <input
+                              id="phone"
                               type="tel"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                               placeholder="+996 XXX XXX XXX"
+                              required
                             />
                           </div>
                           {deliveryOption === "delivery" && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Адрес доставки</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="address">
+                                Адрес доставки
+                              </label>
                               <input
+                                id="address"
                                 type="text"
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                                 placeholder="Улица, дом, квартира"
+                                required
                               />
                             </div>
                           )}
@@ -818,13 +861,13 @@ const Home = () => {
                           <input
                             type="text"
                             value={promoCode}
-                            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                            onChange={(e) => setPromoCode(e.target.value.toUpperCase().trim())}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                             placeholder="Введите промокод"
                           />
                           <button
                             onClick={applyPromoCode}
-                            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
+                            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition focus:outline-none focus:ring-2 focus:ring-orange-500"
                           >
                             Применить
                           </button>
@@ -841,7 +884,10 @@ const Home = () => {
                         <h3 className="text-lg font-semibold mb-3">Ваш заказ</h3>
                         <div className="space-y-3">
                           {cart.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center py-2 border-b">
+                            <div
+                              key={`${item.id}-${item.size || "single"}`}
+                              className="flex justify-between items-center py-2 border-b"
+                            >
                               <div>
                                 <p className="font-medium">{item.name}</p>
                                 {item.size && (
@@ -878,7 +924,11 @@ const Home = () => {
                         <div className="flex justify-between font-bold text-lg">
                           <span>Итого:</span>
                           <span className="text-orange-600">
-                            {formatPrice(calculateTotal() - (promoDiscount > 0 ? calculateSubtotal() * (promoDiscount / 100) : 0))} Сом
+                            {formatPrice(
+                              calculateTotal() -
+                                (promoDiscount > 0 ? calculateSubtotal() * (promoDiscount / 100) : 0)
+                            )}{" "}
+                            Сом
                           </span>
                         </div>
                       </div>
@@ -887,7 +937,7 @@ const Home = () => {
                     <div className="border-t pt-4">
                       <button
                         onClick={handlePlaceOrder}
-                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg"
+                        className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition font-bold text-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                       >
                         Подтвердить заказ
                       </button>
