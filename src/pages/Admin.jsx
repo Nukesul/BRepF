@@ -36,10 +36,10 @@ const Admin = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/admin/login");
-
+  
+    let mounted = true;
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token");
         const [
           branchesRes,
           categoriesRes,
@@ -57,27 +57,33 @@ const Admin = () => {
           fetch("https://nukesul-brepb-651f.twc1.net/promo-codes", { headers: { Authorization: `Bearer ${token}` } }),
           fetch("https://nukesul-brepb-651f.twc1.net/stories", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
-
+  
+        if (!mounted) return;
+  
         if (!branchesRes.ok) throw new Error("Ошибка загрузки филиалов");
-        if (!categoriesRes.ok) throw new Error("Ошибка загрузки категорий");
-        if (!subCategoriesRes.ok) throw new Error("Ошибка загрузки подкатегорий");
-        if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
-        if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
-        if (!promoCodesRes.ok) throw new Error("Ошибка загрузки промокодов");
-        if (!storiesRes.ok) throw new Error("Ошибка загрузки историй");
-
         setBranches(await branchesRes.json());
+        if (!categoriesRes.ok) throw new Error("Ошибка загрузки категорий");
         setCategories(await categoriesRes.json());
+        if (!subCategoriesRes.ok) throw new Error("Ошибка загрузки подкатегорий");
         setSubCategories(await subCategoriesRes.json());
+        if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
         setProducts(await productsRes.json());
+        if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
         setDiscounts(await discountsRes.json());
+        if (!promoCodesRes.ok) throw new Error("Ошибка загрузки промокодов");
         setPromoCodes(await promoCodesRes.json());
+        if (!storiesRes.ok) throw new Error("Ошибка загрузки историй");
         setStories(await storiesRes.json());
       } catch (err) {
         console.error("Ошибка загрузки данных:", err);
+        if (mounted) alert(err.message);
       }
     };
     fetchData();
+  
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   // Функция для формирования URL изображения через маршрут /product-image/:key
@@ -99,7 +105,7 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     const method = editId ? "PUT" : "POST";
     const finalUrl = editId ? `${url}/${editId}` : url;
-
+  
     try {
       let response;
       if (isMultipart) {
@@ -111,9 +117,7 @@ const Admin = () => {
         }
         response = await fetch(finalUrl, {
           method,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
           body: formData,
         });
       } else {
@@ -126,14 +130,14 @@ const Admin = () => {
           body: JSON.stringify(data),
         });
       }
-
+  
       if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
       const result = await response.json();
-
+  
       if (editId) {
-        setData(list.map((item) => (item.id === editId ? { ...item, ...result } : item)));
+        setData((prevList) => prevList.map((item) => (item.id === editId ? { ...item, ...result } : item)));
       } else {
-        setData([...list, result]);
+        setData((prevList) => [...prevList, result]);
       }
       resetData();
       setEditId(null);
