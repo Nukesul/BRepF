@@ -245,11 +245,13 @@ const Home = () => {
     return product.price_small || product.price_medium || product.price_large;
   };
 
-  // Функция для проверки URL изображения
+  // Функция для формирования URL изображения
   const getImageUrl = (imagePath) => {
-    const url = `https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/${imagePath}`;
+    if (!imagePath) return "https://via.placeholder.com/300"; // Запасное изображение, если путь пустой
+    const url = `https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/boody-images/${imagePath}`;
     return url;
   };
+
   // Обработчик ошибки загрузки изображения
   const handleImageError = (e) => {
     console.error(`Ошибка загрузки изображения: ${e.target.src}`);

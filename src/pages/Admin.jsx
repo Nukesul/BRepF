@@ -17,7 +17,7 @@ const Admin = () => {
     categoryId: "",
     subCategoryId: "",
     image: null,
-    priceCount: 1, // Новое поле для выбора количества цен
+    priceCount: 1,
   });
   const [discount, setDiscount] = useState({ productId: "", discountPercent: "" });
   const [promoCode, setPromoCode] = useState({ code: "", discountPercent: "", expiresAt: "", isActive: true });
@@ -80,62 +80,75 @@ const Admin = () => {
     fetchData();
   }, [navigate]);
 
-  const handleSubmit = async (e, url, data, setData, list, resetData, isMultipart = false) => {
-  e.preventDefault();
-  const token = localStorage.getItem("token");
-  const method = editId ? "PUT" : "POST";
-  const finalUrl = editId ? `${url}/${editId}` : url;
+  // Функция для формирования URL изображения
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://via.placeholder.com/300"; // Запасное изображение, если путь пустой
+    const url = `https://s3.twcstorage.ru/4eeafbc6-4af2cd44-4c23-4530-a2bf-750889dfdf75/boody-images/${imagePath}`;
+    return url;
+  };
 
-  try {
-    let response;
-    if (isMultipart) {
-      const formData = new FormData();
-      for (const key in data) {
-        if (data[key] !== null && data[key] !== "" && key !== "priceCount") {
-          if (key === "image" && data[key] instanceof File) {
-            // Добавляем префикс boody-images к имени файла
-            const fileName = `boody-images/${data[key].name}`;
-            formData.append(key, data[key], fileName);
-          } else {
-            formData.append(key, data[key]);
+  // Обработчик ошибки загрузки изображения
+  const handleImageError = (e) => {
+    console.error(`Ошибка загрузки изображения: ${e.target.src}`);
+    e.target.src = "https://via.placeholder.com/300"; // Запасное изображение
+  };
+
+  const handleSubmit = async (e, url, data, setData, list, resetData, isMultipart = false) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    const method = editId ? "PUT" : "POST";
+    const finalUrl = editId ? `${url}/${editId}` : url;
+
+    try {
+      let response;
+      if (isMultipart) {
+        const formData = new FormData();
+        for (const key in data) {
+          if (data[key] !== null && data[key] !== "" && key !== "priceCount") {
+            if (key === "image" && data[key] instanceof File) {
+              // Добавляем префикс boody-images к имени файла
+              const fileName = `boody-images/${data[key].name}`;
+              formData.append(key, data[key], fileName);
+            } else {
+              formData.append(key, data[key]);
+            }
           }
         }
+        response = await fetch(finalUrl, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "x-amz-acl": "public-read", // Делаем файл публичным
+          },
+          body: formData,
+        });
+      } else {
+        response = await fetch(finalUrl, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
       }
-      response = await fetch(finalUrl, {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-amz-acl": "public-read", // Делаем файл публичным
-        },
-        body: formData,
-      });
-    } else {
-      response = await fetch(finalUrl, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-    }
 
-    if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
-    const result = await response.json();
+      if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
+      const result = await response.json();
 
-    if (editId) {
-      setData(list.map((item) => (item.id === editId ? { ...item, ...result } : item)));
-    } else {
-      setData([...list, result]);
+      if (editId) {
+        setData(list.map((item) => (item.id === editId ? { ...item, ...result } : item)));
+      } else {
+        setData([...list, result]);
+      }
+      resetData();
+      setEditId(null);
+      alert(`${editId ? "Обновлено" : "Добавлено"} успешно!`);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Ошибка сервера");
     }
-    resetData();
-    setEditId(null);
-    alert(`${editId ? "Обновлено" : "Добавлено"} успешно!`);
-  } catch (err) {
-    console.error(err);
-    alert(err.message || "Ошибка сервера");
-  }
-};
+  };
 
   const handleDelete = async (url, id, setData, list) => {
     const token = localStorage.getItem("token");
@@ -206,7 +219,9 @@ const Admin = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
       <Header />
       <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-center text-orange-700 mb-8 drop-shadow-md">Панель администратора</h1>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-center text-orange-700 mb-8 drop-shadow-md">
+          Панель администратора
+        </h1>
 
         {/* Tab Navigation */}
         <div className="flex justify-center space-x-4 mb-8">
@@ -214,10 +229,11 @@ const Admin = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === tab
-                ? "bg-orange-600 text-white shadow-lg"
-                : "bg-white text-orange-600 border border-orange-600 hover:bg-orange-100"
-                }`}
+              className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${
+                activeTab === tab
+                  ? "bg-orange-600 text-white shadow-lg"
+                  : "bg-white text-orange-600 border border Search results border-orange-600 hover:bg-orange-100"
+              }`}
             >
               {tab === "products" && "Продукты"}
               {tab === "branches" && "Филиалы"}
@@ -405,11 +421,11 @@ const Admin = () => {
                     <div className="flex items-center space-x-4">
                       {p.image ? (
                         <img
-                        src={`https://s3.twcstorage.ru/boody-images/${p.image}`}
-                        alt={p.name}
-                        className="w-24 h-24 object-cover rounded-lg mb-2"
-                        onError={(e) => (e.target.style.display = "none")}
-                      />
+                          src={getImageUrl(p.image)}
+                          alt={p.name}
+                          className="w-24 h-24 object-cover rounded-lg mb-2"
+                          onError={handleImageError}
+                        />
                       ) : (
                         <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-lg">
                           <span className="text-gray-500 text-sm">Нет изображения</span>
@@ -424,10 +440,10 @@ const Admin = () => {
                           {p.price_small && p.price_medium && p.price_large
                             ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом, L: ${p.price_large} Сом`
                             : p.price_small && p.price_medium
-                              ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом`
-                              : p.price_single
-                                ? `${p.price_single} Сом`
-                                : "Не указаны"}
+                            ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом`
+                            : p.price_single
+                            ? `${p.price_single} Сом`
+                            : "Не указаны"}
                         </p>
                       </div>
                     </div>
@@ -439,7 +455,9 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/products", p.id, setProducts, products)}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/products", p.id, setProducts, products)
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -456,7 +474,12 @@ const Admin = () => {
         {activeTab === "branches" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление филиалами</h2>
-            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/branches", branch, setBranches, branches, resetBranch)} className="space-y-6">
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/branches", branch, setBranches, branches, resetBranch)
+              }
+              className="space-y-6"
+            >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
@@ -511,7 +534,9 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/branches", b.id, setBranches, branches)}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/branches", b.id, setBranches, branches)
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -528,7 +553,12 @@ const Admin = () => {
         {activeTab === "categories" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление категориями</h2>
-            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/categories", category, setCategories, categories, resetCategory)} className="space-y-6">
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/categories", category, setCategories, categories, resetCategory)
+              }
+              className="space-y-6"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
                 <input
@@ -561,7 +591,9 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/categories", c.id, setCategories, categories)}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/categories", c.id, setCategories, categories)
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -579,7 +611,16 @@ const Admin = () => {
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление подкатегориями</h2>
             <form
-              onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/subcategories", subCategory, setSubCategories, subCategories, resetSubCategory)}
+              onSubmit={(e) =>
+                handleSubmit(
+                  e,
+                  "https://nukesul-brepb-651f.twc1.net/subcategories",
+                  subCategory,
+                  setSubCategories,
+                  subCategories,
+                  resetSubCategory
+                )
+              }
               className="space-y-6"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -633,7 +674,14 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/subcategories", sc.id, setSubCategories, subCategories)}
+                        onClick={() =>
+                          handleDelete(
+                            "https://nukesul-brepb-651f.twc1.net/subcategories",
+                            sc.id,
+                            setSubCategories,
+                            subCategories
+                          )
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -650,7 +698,12 @@ const Admin = () => {
         {activeTab === "discounts" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление скидками</h2>
-            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/discounts", discount, setDiscounts, discounts, resetDiscount)} className="space-y-6">
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/discounts", discount, setDiscounts, discounts, resetDiscount)
+              }
+              className="space-y-6"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Продукт</label>
@@ -704,7 +757,9 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/discounts", d.id, setDiscounts, discounts)}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/discounts", d.id, setDiscounts, discounts)
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -779,7 +834,9 @@ const Admin = () => {
                   <div key={pc.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     <p className="font-bold text-gray-800">{pc.code}</p>
                     <p className="text-sm text-orange-600">Скидка: {pc.discount_percent}%</p>
-                    <p className="text-sm text-gray-600">Истекает: {pc.expires_at ? new Date(pc.expires_at).toLocaleString() : "Бессрочный"}</p>
+                    <p className="text-sm text-gray-600">
+                      Истекает: {pc.expires_at ? new Date(pc.expires_at).toLocaleString() : "Бессрочный"}
+                    </p>
                     <p className="text-sm text-gray-600">Статус: {pc.is_active ? "Активен" : "Неактивен"}</p>
                     <div className="mt-4 flex justify-end space-x-2">
                       <button
@@ -789,7 +846,9 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/promo-codes", pc.id, setPromoCodes, promoCodes)}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/promo-codes", pc.id, setPromoCodes, promoCodes)
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
@@ -806,7 +865,12 @@ const Admin = () => {
         {activeTab === "stories" && (
           <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
             <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление историями</h2>
-            <form onSubmit={(e) => handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/stories", story, setStories, stories, resetStory, true)} className="space-y-6">
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/stories", story, setStories, stories, resetStory, true)
+              }
+              className="space-y-6"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Изображение</label>
                 <input
@@ -831,12 +895,12 @@ const Admin = () => {
                 {stories.map((s) => (
                   <div key={s.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     {s.image ? (
-                     <img
-                     src={`https://s3.twcstorage.ru/boody-images/${p.image}`}
-                     alt={p.name}
-                     className="w-24 h-24 object-cover rounded-lg mb-2"
-                     onError={(e) => (e.target.style.display = "none")}
-                   />
+                      <img
+                        src={getImageUrl(s.image)}
+                        alt="Story"
+                        className="w-full h-32 object-cover rounded-lg mb-2"
+                        onError={handleImageError}
+                      />
                     ) : (
                       <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-lg">
                         <span className="text-gray-500 text-sm">Нет изображения</span>
@@ -850,7 +914,9 @@ const Admin = () => {
                         Редактировать
                       </button>
                       <button
-                        onClick={() => handleDelete("https://nukesul-brepb-651f.twc1.net/stories", s.id, setStories, stories)}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/stories", s.id, setStories, stories)
+                        }
                         className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
                         Удалить
