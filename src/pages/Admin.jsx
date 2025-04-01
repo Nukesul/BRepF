@@ -81,47 +81,61 @@ const Admin = () => {
   }, [navigate]);
 
   const handleSubmit = async (e, url, data, setData, list, resetData, isMultipart = false) => {
-    e.preventDefault();
-    const token = localStorage.getItem("token");
-    const method = editId ? "PUT" : "POST";
-    const finalUrl = editId ? `${url}/${editId}` : url;
+  e.preventDefault();
+  const token = localStorage.getItem("token");
+  const method = editId ? "PUT" : "POST";
+  const finalUrl = editId ? `${url}/${editId}` : url;
 
-    try {
-      let response;
-      if (isMultipart) {
-        const formData = new FormData();
-        for (const key in data) {
-          if (data[key] !== null && data[key] !== "" && key !== "priceCount") formData.append(key, data[key]);
+  try {
+    let response;
+    if (isMultipart) {
+      const formData = new FormData();
+      for (const key in data) {
+        if (data[key] !== null && data[key] !== "" && key !== "priceCount") {
+          if (key === "image" && data[key] instanceof File) {
+            // Добавляем префикс boody-images к имени файла
+            const fileName = `boody-images/${data[key].name}`;
+            formData.append(key, data[key], fileName);
+          } else {
+            formData.append(key, data[key]);
+          }
         }
-        response = await fetch(finalUrl, {
-          method,
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-      } else {
-        response = await fetch(finalUrl, {
-          method,
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(data),
-        });
       }
-
-      if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
-      const result = await response.json();
-
-      if (editId) {
-        setData(list.map((item) => (item.id === editId ? { ...item, ...result } : item)));
-      } else {
-        setData([...list, result]);
-      }
-      resetData();
-      setEditId(null);
-      alert(`${editId ? "Обновлено" : "Добавлено"} успешно!`);
-    } catch (err) {
-      console.error(err);
-      alert(err.message || "Ошибка сервера");
+      response = await fetch(finalUrl, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "x-amz-acl": "public-read", // Делаем файл публичным
+        },
+        body: formData,
+      });
+    } else {
+      response = await fetch(finalUrl, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
     }
-  };
+
+    if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
+    const result = await response.json();
+
+    if (editId) {
+      setData(list.map((item) => (item.id === editId ? { ...item, ...result } : item)));
+    } else {
+      setData([...list, result]);
+    }
+    resetData();
+    setEditId(null);
+    alert(`${editId ? "Обновлено" : "Добавлено"} успешно!`);
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Ошибка сервера");
+  }
+};
 
   const handleDelete = async (url, id, setData, list) => {
     const token = localStorage.getItem("token");
@@ -391,11 +405,11 @@ const Admin = () => {
                     <div className="flex items-center space-x-4">
                       {p.image ? (
                         <img
-                          src={`https://s3.twcstorage.ru/${p.image}`} // Путь уже правильный
-                          alt={p.name}
-                          className="w-24 h-24 object-cover rounded-lg mb-2"
-                          onError={(e) => (e.target.style.display = "none")} // Скрываем, если ошибка загрузки
-                        />
+                        src={`https://s3.twcstorage.ru/boody-images/${p.image}`}
+                        alt={p.name}
+                        className="w-24 h-24 object-cover rounded-lg mb-2"
+                        onError={(e) => (e.target.style.display = "none")}
+                      />
                       ) : (
                         <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-lg">
                           <span className="text-gray-500 text-sm">Нет изображения</span>
@@ -817,12 +831,12 @@ const Admin = () => {
                 {stories.map((s) => (
                   <div key={s.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
                     {s.image ? (
-                      <img
-                        src={`https://s3.twcstorage.ru/${s.image}`} // Исправленный путь
-                        alt="Story"
-                        className="w-full h-32 object-cover rounded-lg mb-2"
-                        onError={(e) => (e.target.style.display = "none")} // Скрываем, если ошибка загрузки
-                      />
+                     <img
+                     src={`https://s3.twcstorage.ru/boody-images/${p.image}`}
+                     alt={p.name}
+                     className="w-24 h-24 object-cover rounded-lg mb-2"
+                     onError={(e) => (e.target.style.display = "none")}
+                   />
                     ) : (
                       <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-lg">
                         <span className="text-gray-500 text-sm">Нет изображения</span>
