@@ -818,7 +818,6 @@ const Home = () => {
                           </p>
                         )}
                       </div>
-{/* лдвлд, */}
                       <div>
                         <h3 className="text-lg font-semibold mb-3">Ваш заказ</h3>
                         <div className="space-y-3">
