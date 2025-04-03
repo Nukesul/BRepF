@@ -27,6 +27,7 @@ const Home = () => {
   const [promoError, setPromoError] = useState(null);
   const categoriesRef = useRef({});
   const user = JSON.parse(localStorage.getItem("user")) || null;
+  const storyTimerRef = useRef(null); // Для хранения таймера историй
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,32 +73,53 @@ const Home = () => {
   }, [selectedBranch, allProducts, categories]);
 
   useEffect(() => {
-    if (!selectedStory || !stories.length) return;
+    if (!selectedStory || !stories.length) {
+      if (storyTimerRef.current) {
+        clearInterval(storyTimerRef.current);
+        storyTimerRef.current = null;
+      }
+      return;
+    }
+
     setStoryProgress(0);
-    const timer = setInterval(() => {
+    storyTimerRef.current = setInterval(() => {
       setStoryProgress((prev) => {
         if (prev >= 100) {
           const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-          setSelectedStory(stories[(currentIndex + 1) % stories.length]);
+          const nextIndex = (currentIndex + 1) % stories.length;
+          setSelectedStory(stories[nextIndex]);
           return 0;
         }
         return prev + 2;
       });
     }, 50);
-    return () => clearInterval(timer);
+
+    return () => {
+      if (storyTimerRef.current) {
+        clearInterval(storyTimerRef.current);
+        storyTimerRef.current = null;
+      }
+    };
   }, [selectedStory, stories]);
 
   const getDiscountedPrice = (price, productId) => {
-    const discount = discounts.find((d) => d.product_id === productId);
     const basePrice = Number(price) || 0;
-    return promoDiscount > 0 && discount
-      ? basePrice * (1 - discount.discount_percent / 100) * (1 - promoDiscount / 100)
-      : discount
-      ? basePrice * (1 - discount.discount_percent / 100)
-      : basePrice;
+    const discount = discounts.find((d) => d.product_id === productId);
+    const discountPercent = discount ? Number(discount.discount_percent) || 0 : 0;
+    const promoDiscountPercent = Number(promoDiscount) || 0;
+
+    if (promoDiscountPercent > 0 && discountPercent > 0) {
+      return basePrice * (1 - discountPercent / 100) * (1 - promoDiscountPercent / 100);
+    } else if (discountPercent > 0) {
+      return basePrice * (1 - discountPercent / 100);
+    }
+    return basePrice;
   };
 
-  const formatPrice = (price) => Number(price || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const formatPrice = (price) => {
+    const numPrice = Number(price) || 0;
+    return numPrice.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
 
   const scrollToCategory = (categoryId) => {
     setActiveCategory(categoryId);
@@ -106,13 +128,15 @@ const Home = () => {
 
   const handleNextStory = () => {
     const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-    setSelectedStory(stories[(currentIndex + 1) % stories.length]);
+    const nextIndex = (currentIndex + 1) % stories.length;
+    setSelectedStory(stories[nextIndex]);
     setStoryProgress(0);
   };
 
   const handlePrevStory = () => {
     const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-    setSelectedStory(stories[(currentIndex - 1 + stories.length) % stories.length]);
+    const prevIndex = (currentIndex - 1 + stories.length) % stories.length;
+    setSelectedStory(stories[prevIndex]);
     setStoryProgress(0);
   };
 
@@ -249,7 +273,7 @@ const Home = () => {
                       />
                       <img
                         src={getImageUrl(selectedStory.image)}
-                        alt={story.title}
+                        alt={selectedStory.title}
                         className="w-full h-[50vh] sm:h-[60vh] object-contain"
                       />
                       <button
@@ -374,8 +398,8 @@ const Home = () => {
                                 <p className="text-sm text-gray-600 line-clamp-2">{product.description || "Нет описания"}</p>
                                 <div className="mt-3 flex items-center justify-between">
                                   <p className="text-orange-600 font-semibold">
-                                    {formatPrice(getDiscountedPrice(product.price_single, product.id))} Сом
-                                    {discounts.some((d) => d.product_id === product.id) && (
+                                    {formatPrice(getDiscountedPrice(product.price_single || 0, product.id))} Сом
+                                    {discounts.some((d) => d.product_id === product.id) && product.price_single && (
                                       <span className="line-through text-gray-400 text-sm ml-2">
                                         {formatPrice(product.price_single)}
                                       </span>
@@ -444,7 +468,7 @@ const Home = () => {
                                   {size === "small" ? "Маленькая" : size === "medium" ? "Средняя" : "Большая"}
                                 </span>
                                 <span>
-                                  {formatPrice(getDiscountedPrice(selectedProduct[`price_${size}`], selectedProduct.id))}{" "}
+                                  {formatPrice(getDiscountedPrice(selectedProduct[`price_${size}`] || 0, selectedProduct.id))}{" "}
                                   Сом
                                 </span>
                               </button>
@@ -454,8 +478,8 @@ const Home = () => {
                     ) : (
                       <div className="flex items-center justify-between">
                         <p className="text-orange-600 font-semibold text-lg">
-                          {formatPrice(getDiscountedPrice(selectedProduct.price_single, selectedProduct.id))} Сом
-                          {discounts.some((d) => d.product_id === selectedProduct.id) && (
+                          {formatPrice(getDiscountedPrice(selectedProduct.price_single || 0, selectedProduct.id))} Сом
+                          {discounts.some((d) => d.product_id === selectedProduct.id) && selectedProduct.price_single && (
                             <span className="line-through text-gray-400 text-sm ml-2">
                               {formatPrice(selectedProduct.price_single)}
                             </span>

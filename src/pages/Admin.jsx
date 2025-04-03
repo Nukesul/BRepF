@@ -1,727 +1,933 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import Footer from "../components/Footer";
 
-const Home = () => {
+const Admin = () => {
+  const [branch, setBranch] = useState({ name: "", address: "", phone: "" });
+  const [category, setCategory] = useState({ name: "" });
+  const [subCategory, setSubCategory] = useState({ name: "", categoryId: "" });
+  const [product, setProduct] = useState({
+    name: "",
+    description: "",
+    priceSmall: "",
+    priceMedium: "",
+    priceLarge: "",
+    priceSingle: "",
+    branchId: "",
+    categoryId: "",
+    subCategoryId: "",
+    image: null,
+    priceCount: 1,
+  });
+  const [discount, setDiscount] = useState({ productId: "", discountPercent: "" });
+  const [promoCode, setPromoCode] = useState({ code: "", discountPercent: "", expiresAt: "", isActive: true });
+  const [story, setStory] = useState({ image: null });
   const [branches, setBranches] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
-  const [discounts, setDiscounts] = useState([]);
-  const [stories, setStories] = useState([]);
-  const [selectedStory, setSelectedStory] = useState(null);
-  const [storyProgress, setStoryProgress] = useState(0);
-  const [selectedBranch, setSelectedBranch] = useState(null);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [showBranchSelection, setShowBranchSelection] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [cart, setCart] = useState([]);
-  const [showCart, setShowCart] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [deliveryOption, setDeliveryOption] = useState("pickup");
-  const [deliveryCost, setDeliveryCost] = useState(0);
   const [categories, setCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [promoCode, setPromoCode] = useState("");
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [promoError, setPromoError] = useState(null);
-  const categoriesRef = useRef({});
-  const user = JSON.parse(localStorage.getItem("user")) || null;
-  const storyTimerRef = useRef(null); // Для хранения таймера историй
+  const [subCategories, setSubCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [promoCodes, setPromoCodes] = useState([]);
+  const [stories, setStories] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [activeTab, setActiveTab] = useState("products");
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return navigate("/admin/login");
+  
+    let mounted = true;
     const fetchData = async () => {
-      setLoading(true);
       try {
-        const endpoints = ["branches", "products", "discounts", "stories", "categories"];
-        const responses = await Promise.all(
-          endpoints.map((endpoint) =>
-            fetch(`https://nukesul-brepb-651f.twc1.net/${endpoint}`).then((res) => {
-              if (!res.ok) throw new Error(`Ошибка загрузки ${endpoint}`);
-              return res.json();
-            })
-          )
-        );
-        setBranches(responses[0]);
-        setAllProducts(responses[1]);
-        setDiscounts(responses[2]);
-        setStories(responses[3]);
-        setCategories(responses[4]);
+        const [
+          branchesRes,
+          categoriesRes,
+          subCategoriesRes,
+          productsRes,
+          discountsRes,
+          promoCodesRes,
+          storiesRes,
+        ] = await Promise.all([
+          fetch("https://nukesul-brepb-651f.twc1.net/branches", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/categories", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/subcategories", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/products", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/discounts", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/promo-codes", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("https://nukesul-brepb-651f.twc1.net/stories", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+  
+        if (!mounted) return;
+  
+        if (!branchesRes.ok) throw new Error("Ошибка загрузки филиалов");
+        setBranches(await branchesRes.json());
+        if (!categoriesRes.ok) throw new Error("Ошибка загрузки категорий");
+        setCategories(await categoriesRes.json());
+        if (!subCategoriesRes.ok) throw new Error("Ошибка загрузки подкатегорий");
+        setSubCategories(await subCategoriesRes.json());
+        if (!productsRes.ok) throw new Error("Ошибка загрузки продуктов");
+        setProducts(await productsRes.json());
+        if (!discountsRes.ok) throw new Error("Ошибка загрузки скидок");
+        setDiscounts(await discountsRes.json());
+        if (!promoCodesRes.ok) throw new Error("Ошибка загрузки промокодов");
+        setPromoCodes(await promoCodesRes.json());
+        if (!storiesRes.ok) throw new Error("Ошибка загрузки историй");
+        setStories(await storiesRes.json());
       } catch (err) {
-        setError("Не удалось загрузить данные.");
-      } finally {
-        setLoading(false);
+        console.error("Ошибка загрузки данных:", err);
+        if (mounted) alert(err.message);
       }
     };
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (selectedBranch) {
-      const branchProducts = allProducts.filter((product) => product.branch_id === selectedBranch);
-      setFilteredProducts(branchProducts);
-      setShowBranchSelection(false);
-      const availableCategories = categories.filter((cat) =>
-        branchProducts.some((p) => p.category_id === cat.id)
-      );
-      setActiveCategory(availableCategories[0]?.id || null);
-    } else {
-      setFilteredProducts([]);
-      setShowBranchSelection(true);
-      setActiveCategory(null);
-    }
-  }, [selectedBranch, allProducts, categories]);
-
-  useEffect(() => {
-    if (!selectedStory || !stories.length) {
-      if (storyTimerRef.current) {
-        clearInterval(storyTimerRef.current);
-        storyTimerRef.current = null;
-      }
-      return;
-    }
-
-    setStoryProgress(0);
-    storyTimerRef.current = setInterval(() => {
-      setStoryProgress((prev) => {
-        if (prev >= 100) {
-          const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-          const nextIndex = (currentIndex + 1) % stories.length;
-          setSelectedStory(stories[nextIndex]);
-          return 0;
-        }
-        return prev + 2;
-      });
-    }, 50);
-
+  
     return () => {
-      if (storyTimerRef.current) {
-        clearInterval(storyTimerRef.current);
-        storyTimerRef.current = null;
-      }
+      mounted = false;
     };
-  }, [selectedStory, stories]);
+  }, [navigate]);
 
-  const getDiscountedPrice = (price, productId) => {
-    const basePrice = Number(price) || 0;
-    const discount = discounts.find((d) => d.product_id === productId);
-    const discountPercent = discount ? Number(discount.discount_percent) || 0 : 0;
-    const promoDiscountPercent = Number(promoDiscount) || 0;
-
-    if (promoDiscountPercent > 0 && discountPercent > 0) {
-      return basePrice * (1 - discountPercent / 100) * (1 - promoDiscountPercent / 100);
-    } else if (discountPercent > 0) {
-      return basePrice * (1 - discountPercent / 100);
-    }
-    return basePrice;
+  // Функция для формирования URL изображения через маршрут /product-image/:key
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return "https://via.placeholder.com/300"; // Запасное изображение, если путь пустой
+    // Извлекаем имя файла из полного пути, если он содержит boody-images/
+    const fileName = imagePath.includes("boody-images/") ? imagePath.split("boody-images/")[1] : imagePath;
+    return `https://nukesul-brepb-651f.twc1.net/product-image/${fileName}`;
   };
 
-  const formatPrice = (price) => {
-    const numPrice = Number(price) || 0;
-    return numPrice.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  // Обработчик ошибки загрузки изображения
+  const handleImageError = (e) => {
+    console.error(`Ошибка загрузки изображения: ${e.target.src}`);
+    e.target.src = "https://via.placeholder.com/300"; // Запасное изображение
   };
 
-  const scrollToCategory = (categoryId) => {
-    setActiveCategory(categoryId);
-    categoriesRef.current[categoryId]?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleNextStory = () => {
-    const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-    const nextIndex = (currentIndex + 1) % stories.length;
-    setSelectedStory(stories[nextIndex]);
-    setStoryProgress(0);
-  };
-
-  const handlePrevStory = () => {
-    const currentIndex = stories.findIndex((s) => s.id === selectedStory.id);
-    const prevIndex = (currentIndex - 1 + stories.length) % stories.length;
-    setSelectedStory(stories[prevIndex]);
-    setStoryProgress(0);
-  };
-
-  const handleBackToBranches = () => {
-    setSelectedBranch(null);
-    setShowBranchSelection(true);
-    setActiveCategory(null);
-    setShowCart(false);
-  };
-
-  const addToCart = (product, size = null) => {
-    const price = size ? product[`price_${size}`] : product.price_single;
-    const finalPrice = getDiscountedPrice(price, product.id);
-    const existingItemIndex = cart.findIndex((item) => item.id === product.id && item.size === size);
-
-    if (existingItemIndex >= 0) {
-      const newCart = [...cart];
-      newCart[existingItemIndex].quantity += 1;
-      setCart(newCart);
-    } else {
-      setCart([...cart, { ...product, size, quantity: 1, finalPrice }]);
-    }
-    setSelectedProduct(null);
-    setShowCart(true);
-  };
-
-  const removeFromCart = (index) => setCart(cart.filter((_, i) => i !== index));
-
-  const updateQuantity = (index, newQuantity) => {
-    if (newQuantity < 1) return;
-    const newCart = [...cart];
-    newCart[index].quantity = newQuantity;
-    setCart(newCart);
-  };
-
-  const calculateSubtotal = () => cart.reduce((total, item) => total + item.finalPrice * item.quantity, 0);
-
-  const calculateTotal = () => calculateSubtotal() + (deliveryOption === "delivery" ? deliveryCost : 0);
-
-  const applyPromoCode = async () => {
-    if (!promoCode.trim()) {
-      setPromoError("Введите промокод");
-      return;
-    }
+  const handleSubmit = async (e, url, data, setData, list, resetData, isMultipart = false) => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    const method = editId ? "PUT" : "POST";
+    const finalUrl = editId ? `${url}/${editId}` : url;
+  
     try {
-      const response = await fetch(`https://nukesul-brepb-651f.twc1.net/promo-codes/check/${promoCode}`);
-      if (!response.ok) throw new Error("Промокод не найден");
-      const promo = await response.json();
-      setPromoDiscount(promo.discount_percent || 0);
-      setPromoError(null);
+      let response;
+      if (isMultipart) {
+        const formData = new FormData();
+        for (const key in data) {
+          if (data[key] !== null && data[key] !== "" && key !== "priceCount") {
+            formData.append(key, data[key]);
+          }
+        }
+        response = await fetch(finalUrl, {
+          method,
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+      } else {
+        response = await fetch(finalUrl, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
+      }
+  
+      if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
+      const result = await response.json();
+  
+      if (editId) {
+        setData((prevList) => prevList.map((item) => (item.id === editId ? { ...item, ...result } : item)));
+      } else {
+        setData((prevList) => [...prevList, result]);
+      }
+      resetData();
+      setEditId(null);
+      alert(`${editId ? "Обновлено" : "Добавлено"} успешно!`);
     } catch (err) {
-      setPromoDiscount(0);
-      setPromoError("Неверный промокод");
+      console.error(err);
+      alert(err.message || "Ошибка сервера");
     }
   };
 
-  const handleCheckout = () => {
-    if (cart.length) setShowCheckout(true);
-  };
+  const handleDelete = async (url, id, setData, list) => {
+    const token = localStorage.getItem("token");
+    if (!window.confirm("Вы уверены, что хотите удалить этот элемент?")) return;
 
-  const handlePlaceOrder = () => {
-    if (cart.length) {
-      alert("Заказ успешно оформлен!");
-      setCart([]);
-      setShowCart(false);
-      setShowCheckout(false);
-      setPromoCode("");
-      setPromoDiscount(0);
+    try {
+      const response = await fetch(`${url}/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(`Ошибка ${response.status}: ${await response.text()}`);
+      setData(list.filter((item) => item.id !== id));
+      alert("Удалено успешно!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Ошибка сервера");
     }
   };
 
-  const getImageUrl = (imagePath) =>
-    imagePath
-      ? `https://nukesul-brepb-651f.twc1.net/product-image/${
-          imagePath.includes("boody-images/") ? imagePath.split("boody-images/")[1] : imagePath
-        }`
-      : "https://via.placeholder.com/300";
+  const handleEdit = (item, setData, resetFields) => {
+    setEditId(item.id);
+    const priceCount =
+      (item.price_small ? 1 : 0) + (item.price_medium ? 1 : 0) + (item.price_large ? 1 : 0) || 1;
+    setData({
+      ...item,
+      categoryId: item.category_id || item.categoryId,
+      subCategoryId: item.sub_category_id || item.subCategoryId || "",
+      branchId: item.branch_id || item.branchId,
+      priceSmall: item.price_small || "",
+      priceMedium: item.price_medium || "",
+      priceLarge: item.price_large || "",
+      priceSingle: item.price_single || "",
+      code: item.code || "",
+      discountPercent: item.discount_percent || "",
+      expiresAt: item.expires_at || "",
+      isActive: item.is_active !== undefined ? item.is_active : true,
+      priceCount: priceCount,
+    });
+  };
+
+  const resetBranch = () => setBranch({ name: "", address: "", phone: "" });
+  const resetCategory = () => setCategory({ name: "" });
+  const resetSubCategory = () => setSubCategory({ name: "", categoryId: "" });
+  const resetProduct = () =>
+    setProduct({
+      name: "",
+      description: "",
+      priceSmall: "",
+      priceMedium: "",
+      priceLarge: "",
+      priceSingle: "",
+      branchId: "",
+      categoryId: "",
+      subCategoryId: "",
+      image: null,
+      priceCount: 1,
+    });
+  const resetDiscount = () => setDiscount({ productId: "", discountPercent: "" });
+  const resetPromoCode = () => setPromoCode({ code: "", discountPercent: "", expiresAt: "", isActive: true });
+  const resetStory = () => setStory({ image: null });
+
+  const handleProductSubmit = (e) =>
+    handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/products", product, setProducts, products, resetProduct, true);
+  const handlePromoCodeSubmit = (e) =>
+    handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/promo-codes", promoCode, setPromoCodes, promoCodes, resetPromoCode);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white font-sans antialiased">
-      <Header user={user} />
-      <main className="flex-grow max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-12">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="pizza-loader">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="pizza-slice"
-                  style={{ transform: `rotate(${i * 60}deg) translateZ(20px)` }}
-                />
-              ))}
-            </div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-md">
-            <p className="text-lg text-red-600 font-medium">{error}</p>
-          </div>
-        ) : (
-          <>
-            {/* Stories */}
-            {stories.length > 0 && (
-              <section className="space-y-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center">Акции</h2>
-                <div className="flex justify-center">
-                  <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide max-w-full px-2">
-                    {stories.map((story) => (
-                      <div
-                        key={story.id}
-                        className="group flex-shrink-0 cursor-pointer"
-                        onClick={() => setSelectedStory(story)}
-                      >
-                        <img
-                          src={getImageUrl(story.image)}
-                          alt={story.title}
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-orange-500 group-hover:scale-105 transition-transform duration-300 shadow-sm"
-                        />
-                      </div>
-                    ))}
-                  </div>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
+      <Header />
+      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-center text-orange-700 mb-8 drop-shadow-md">
+          Панель администратора
+        </h1>
+
+        {/* Tab Navigation */}
+        <div className="flex justify-center space-x-4 mb-8">
+          {["products", "branches", "categories", "subcategories", "discounts", "promo-codes", "stories"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${
+                activeTab === tab
+                  ? "bg-orange-600 text-white shadow-lg"
+                  : "bg-white text-orange-600 border border-orange-600 hover:bg-orange-100"
+              }`}
+            >
+              {tab === "products" && "Продукты"}
+              {tab === "branches" && "Филиалы"}
+              {tab === "categories" && "Категории"}
+              {tab === "subcategories" && "Подкатегории"}
+              {tab === "discounts" && "Скидки"}
+              {tab === "promo-codes" && "Промокоды"}
+              {tab === "stories" && "Истории"}
+            </button>
+          ))}
+        </div>
+
+        {/* Products Section */}
+        {activeTab === "products" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление продуктами</h2>
+            <form onSubmit={handleProductSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                  <input
+                    type="text"
+                    value={product.name}
+                    onChange={(e) => setProduct({ ...product, name: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  />
                 </div>
-                {selectedStory && (
-                  <div
-                    className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 sm:p-6"
-                    onClick={() => setSelectedStory(null)}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                  <textarea
+                    value={product.description}
+                    onChange={(e) => setProduct({ ...product, description: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Филиал</label>
+                  <select
+                    value={product.branchId}
+                    onChange={(e) => setProduct({ ...product, branchId: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
                   >
-                    <div
-                      className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div
-                        className="absolute top-0 left-0 h-1 bg-gradient-to-r from-orange-500 to-red-500"
-                        style={{ width: `${storyProgress}%`, transition: "width 0.1s linear" }}
+                    <option value="">Выберите филиал</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Категория</label>
+                  <select
+                    value={product.categoryId}
+                    onChange={(e) => setProduct({ ...product, categoryId: e.target.value, subCategoryId: "" })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  >
+                    <option value="">Выберите категорию</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Подкатегория</label>
+                  <select
+                    value={product.subCategoryId}
+                    onChange={(e) => setProduct({ ...product, subCategoryId: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    disabled={!product.categoryId}
+                  >
+                    <option value="">Выберите подкатегорию (опционально)</option>
+                    {subCategories
+                      .filter((sc) => sc.category_id === product.categoryId)
+                      .map((sc) => (
+                        <option key={sc.id} value={sc.id}>
+                          {sc.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Количество цен</label>
+                  <select
+                    value={product.priceCount}
+                    onChange={(e) => {
+                      const count = Number(e.target.value);
+                      setProduct({
+                        ...product,
+                        priceCount: count,
+                        priceSmall: count >= 1 ? product.priceSmall : "",
+                        priceMedium: count >= 2 ? product.priceMedium : "",
+                        priceLarge: count === 3 ? product.priceLarge : "",
+                        priceSingle: count === 1 ? product.priceSingle : "",
+                      });
+                    }}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  >
+                    <option value={1}>1 цена</option>
+                    <option value={2}>2 цены</option>
+                    <option value={3}>3 цены</option>
+                  </select>
+                </div>
+                {product.priceCount === 1 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Цена</label>
+                    <input
+                      type="number"
+                      value={product.priceSingle}
+                      onChange={(e) => setProduct({ ...product, priceSingle: e.target.value })}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                )}
+                {product.priceCount >= 2 && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Цена (Маленькая)</label>
+                      <input
+                        type="number"
+                        value={product.priceSmall}
+                        onChange={(e) => setProduct({ ...product, priceSmall: e.target.value })}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                        step="0.01"
+                        required
                       />
-                      <img
-                        src={getImageUrl(selectedStory.image)}
-                        alt={selectedStory.title}
-                        className="w-full h-[50vh] sm:h-[60vh] object-contain"
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Цена (Средняя)</label>
+                      <input
+                        type="number"
+                        value={product.priceMedium}
+                        onChange={(e) => setProduct({ ...product, priceMedium: e.target.value })}
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                        step="0.01"
+                        required
                       />
+                    </div>
+                  </>
+                )}
+                {product.priceCount === 3 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Цена (Большая)</label>
+                    <input
+                      type="number"
+                      value={product.priceLarge}
+                      onChange={(e) => setProduct({ ...product, priceLarge: e.target.value })}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Изображение</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setProduct({ ...product, image: e.target.files[0] })}
+                    className="w-full p-3 border rounded-lg bg-gray-50"
+                    required={!editId}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить продукт" : "Добавить продукт"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список продуктов</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {products.map((p) => (
+                  <div key={p.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <div className="flex items-center space-x-4">
+                      {p.image ? (
+                        <img
+                          src={getImageUrl(p.image)}
+                          alt={p.name}
+                          className="w-24 h-24 object-cover rounded-lg mb-2"
+                          onError={handleImageError}
+                        />
+                      ) : (
+                        <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-lg">
+                          <span className="text-gray-500 text-sm">Нет изображения</span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-bold text-gray-800">{p.name}</p>
+                        <p className="text-sm text-gray-600">Филиал: {p.branch_name || "Не указан"}</p>
+                        <p className="text-sm text-gray-600">Категория: {p.category_name || "Не указана"}</p>
+                        <p className="text-sm text-gray-600">
+                          Цены:{" "}
+                          {p.price_small && p.price_medium && p.price_large
+                            ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом, L: ${p.price_large} Сом`
+                            : p.price_small && p.price_medium
+                            ? `S: ${p.price_small} Сом, M: ${p.price_medium} Сом`
+                            : p.price_single
+                            ? `${p.price_single} Сом`
+                            : "Не указаны"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-2">
                       <button
-                        className="absolute top-3 right-3 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition"
-                        onClick={() => setSelectedStory(null)}
+                        onClick={() => handleEdit(p, setProduct, resetProduct)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                       >
-                        ✕
+                        Редактировать
                       </button>
                       <button
-                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
-                        onClick={handlePrevStory}
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/products", p.id, setProducts, products)
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                       >
-                        ❮
-                      </button>
-                      <button
-                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
-                        onClick={handleNextStory}
-                      >
-                        ❯
+                        Удалить
                       </button>
                     </div>
                   </div>
-                )}
-              </section>
-            )}
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
-            {/* Branches */}
-            {showBranchSelection && (
-              <section className="space-y-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center">Выберите филиал</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {branches.map((branch) => (
-                    <button
-                      key={branch.id}
-                      onClick={() => setSelectedBranch(branch.id)}
-                      className="py-3 px-6 bg-white border border-orange-200 rounded-xl text-gray-800 font-medium hover:bg-orange-100 hover:border-orange-400 transition-transform transform hover:scale-105 shadow-sm"
-                    >
-                      {branch.name}
-                    </button>
-                  ))}
+        {/* Branches Section */}
+        {activeTab === "branches" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление филиалами</h2>
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/branches", branch, setBranches, branches, resetBranch)
+              }
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                  <input
+                    type="text"
+                    value={branch.name}
+                    onChange={(e) => setBranch({ ...branch, name: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  />
                 </div>
-              </section>
-            )}
-
-            {/* Products */}
-            {selectedBranch && (
-              <section className="space-y-8">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {branches.find((b) => b.id === selectedBranch)?.name}
-                  </h2>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={handleBackToBranches}
-                      className="flex items-center text-gray-600 hover:text-orange-600 transition"
-                    >
-                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Назад
-                    </button>
-                    <button
-                      onClick={() => setShowCart(true)}
-                      className="relative text-gray-600 hover:text-orange-600 transition"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                        />
-                      </svg>
-                      {cart.length > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {cart.length}
-                        </span>
-                      )}
-                    </button>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Адрес</label>
+                  <input
+                    type="text"
+                    value={branch.address}
+                    onChange={(e) => setBranch({ ...branch, address: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  />
                 </div>
-
-                <div className="flex space-x-2 overflow-x-auto pb-4 scrollbar-hide">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => scrollToCategory(category.id)}
-                      className={`py-2 px-4 rounded-full text-sm font-medium transition-all ${
-                        activeCategory === category.id
-                          ? "bg-orange-500 text-white shadow-md"
-                          : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
-                      }`}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                  <input
+                    type="text"
+                    value={branch.phone}
+                    onChange={(e) => setBranch({ ...branch, phone: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  />
                 </div>
-
-                <div className="space-y-12">
-                  {categories.map((category) => {
-                    const categoryProducts = filteredProducts.filter((p) => p.category_id === category.id);
-                    if (!categoryProducts.length) return null;
-                    return (
-                      <div key={category.id} ref={(el) => (categoriesRef.current[category.id] = el)}>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-6">{category.name}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {categoryProducts.map((product) => (
-                            <div
-                              key={product.id}
-                              className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-orange-300"
-                              onClick={() => setSelectedProduct(product)}
-                            >
-                              <div className="relative overflow-hidden rounded-t-xl">
-                                <img
-                                  src={getImageUrl(product.image)}
-                                  alt={product.name}
-                                  className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                              </div>
-                              <div className="p-4">
-                                <h4 className="text-lg font-semibold text-gray-900">{product.name}</h4>
-                                <p className="text-sm text-gray-600 line-clamp-2">{product.description || "Нет описания"}</p>
-                                <div className="mt-3 flex items-center justify-between">
-                                  <p className="text-orange-600 font-semibold">
-                                    {formatPrice(getDiscountedPrice(product.price_single || 0, product.id))} Сом
-                                    {discounts.some((d) => d.product_id === product.id) && product.price_single && (
-                                      <span className="line-through text-gray-400 text-sm ml-2">
-                                        {formatPrice(product.price_single)}
-                                      </span>
-                                    )}
-                                  </p>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addToCart(product);
-                                    }}
-                                    className="p-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {/* Product Modal */}
-            {selectedProduct && (
-              <div
-                className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6"
-                onClick={() => setSelectedProduct(null)}
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
               >
-                <div
-                  className="bg-white rounded-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="relative">
-                    <img
-                      src={getImageUrl(selectedProduct.image)}
-                      alt={selectedProduct.name}
-                      className="w-full h-56 sm:h-64 object-cover rounded-t-2xl"
-                    />
-                    <button
-                      className="absolute top-3 right-3 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition"
-                      onClick={() => setSelectedProduct(null)}
-                    >
-                      ✕
-                    </button>
+                {editId ? "Обновить филиал" : "Добавить филиал"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список филиалов</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {branches.map((b) => (
+                  <div key={b.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <p className="font-bold text-gray-800">{b.name}</p>
+                    <p className="text-sm text-gray-600">Адрес: {b.address || "Не указан"}</p>
+                    <p className="text-sm text-gray-600">Телефон: {b.phone || "Не указан"}</p>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEdit(b, setBranch, resetBranch)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/branches", b.id, setBranches, branches)
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-6 space-y-4">
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{selectedProduct.name}</h3>
-                    <p className="text-gray-600 text-sm sm:text-base">{selectedProduct.description || "Нет описания"}</p>
-                    {selectedProduct.price_small || selectedProduct.price_medium || selectedProduct.price_large ? (
-                      <div className="space-y-3">
-                        {["small", "medium", "large"].map(
-                          (size) =>
-                            selectedProduct[`price_${size}`] && (
-                              <button
-                                key={size}
-                                onClick={() => addToCart(selectedProduct, size)}
-                                className="w-full py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition flex justify-between items-center px-4 text-sm sm:text-base"
-                              >
-                                <span>
-                                  {size === "small" ? "Маленькая" : size === "medium" ? "Средняя" : "Большая"}
-                                </span>
-                                <span>
-                                  {formatPrice(getDiscountedPrice(selectedProduct[`price_${size}`] || 0, selectedProduct.id))}{" "}
-                                  Сом
-                                </span>
-                              </button>
-                            )
-                        )}
-                      </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Categories Section */}
+        {activeTab === "categories" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление категориями</h2>
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/categories", category, setCategories, categories, resetCategory)
+              }
+              className="space-y-6"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                <input
+                  type="text"
+                  value={category.name}
+                  onChange={(e) => setCategory({ ...category, name: e.target.value })}
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить категорию" : "Добавить категорию"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список категорий</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categories.map((c) => (
+                  <div key={c.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <p className="font-bold text-gray-800">{c.name}</p>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEdit(c, setCategory, resetCategory)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/categories", c.id, setCategories, categories)
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Subcategories Section */}
+        {activeTab === "subcategories" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление подкатегориями</h2>
+            <form
+              onSubmit={(e) =>
+                handleSubmit(
+                  e,
+                  "https://nukesul-brepb-651f.twc1.net/subcategories",
+                  subCategory,
+                  setSubCategories,
+                  subCategories,
+                  resetSubCategory
+                )
+              }
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+                  <input
+                    type="text"
+                    value={subCategory.name}
+                    onChange={(e) => setSubCategory({ ...subCategory, name: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Категория</label>
+                  <select
+                    value={subCategory.categoryId}
+                    onChange={(e) => setSubCategory({ ...subCategory, categoryId: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  >
+                    <option value="">Выберите категорию</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить подкатегорию" : "Добавить подкатегорию"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список подкатегорий</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {subCategories.map((sc) => (
+                  <div key={sc.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <p className="font-bold text-gray-800">{sc.name}</p>
+                    <p className="text-sm text-gray-600">Категория: {sc.category_name || "Не указана"}</p>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEdit(sc, setSubCategory, resetSubCategory)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete(
+                            "https://nukesul-brepb-651f.twc1.net/subcategories",
+                            sc.id,
+                            setSubCategories,
+                            subCategories
+                          )
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Discounts Section */}
+        {activeTab === "discounts" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление скидками</h2>
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/discounts", discount, setDiscounts, discounts, resetDiscount)
+              }
+              className="space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Продукт</label>
+                  <select
+                    value={discount.productId}
+                    onChange={(e) => setDiscount({ ...discount, productId: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  >
+                    <option value="">Выберите продукт</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Процент скидки</label>
+                  <input
+                    type="number"
+                    value={discount.discountPercent}
+                    onChange={(e) => setDiscount({ ...discount, discountPercent: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    min="1"
+                    max="100"
+                    required
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить скидку" : "Добавить скидку"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список скидок</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {discounts.map((d) => (
+                  <div key={d.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <p className="font-bold text-gray-800">{d.product_name || "Неизвестный продукт"}</p>
+                    <p className="text-sm text-orange-600">Скидка: {d.discount_percent}%</p>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEdit(d, setDiscount, resetDiscount)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/discounts", d.id, setDiscounts, discounts)
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Promo Codes Section */}
+        {activeTab === "promo-codes" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление промокодами</h2>
+            <form onSubmit={handlePromoCodeSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Промокод</label>
+                  <input
+                    type="text"
+                    value={promoCode.code}
+                    onChange={(e) => setPromoCode({ ...promoCode, code: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Процент скидки</label>
+                  <input
+                    type="number"
+                    value={promoCode.discountPercent}
+                    onChange={(e) => setPromoCode({ ...promoCode, discountPercent: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                    min="1"
+                    max="100"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Дата истечения (опционально)</label>
+                  <input
+                    type="datetime-local"
+                    value={promoCode.expiresAt || ""}
+                    onChange={(e) => setPromoCode({ ...promoCode, expiresAt: e.target.value })}
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Активен</label>
+                  <input
+                    type="checkbox"
+                    checked={promoCode.isActive !== false}
+                    onChange={(e) => setPromoCode({ ...promoCode, isActive: e.target.checked })}
+                    className="w-5 h-5"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить промокод" : "Добавить промокод"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список промокодов</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {promoCodes.map((pc) => (
+                  <div key={pc.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    <p className="font-bold text-gray-800">{pc.code}</p>
+                    <p className="text-sm text-orange-600">Скидка: {pc.discount_percent}%</p>
+                    <p className="text-sm text-gray-600">
+                      Истекает: {pc.expires_at ? new Date(pc.expires_at).toLocaleString() : "Бессрочный"}
+                    </p>
+                    <p className="text-sm text-gray-600">Статус: {pc.is_active ? "Активен" : "Неактивен"}</p>
+                    <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEdit(pc, setPromoCode, resetPromoCode)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/promo-codes", pc.id, setPromoCodes, promoCodes)
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "stories" && (
+          <section className="bg-white p-6 rounded-xl shadow-lg border border-orange-100">
+            <h2 className="text-2xl font-bold text-orange-700 mb-6">Управление историями</h2>
+            <form
+              onSubmit={(e) =>
+                handleSubmit(e, "https://nukesul-brepb-651f.twc1.net/stories", story, setStories, stories, resetStory, true)
+              }
+              className="space-y-6"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Изображение</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setStory({ ...story, image: e.target.files[0] })}
+                  className="w-full p-3 border rounded-lg bg-gray-50"
+                  required={!editId}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 transition font-semibold shadow-md"
+              >
+                {editId ? "Обновить историю" : "Добавить историю"}
+              </button>
+            </form>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-orange-700 mb-4">Список историй</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {stories.map((s) => (
+                  <div key={s.id} className="p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition">
+                    {s.image ? (
+                      <img
+                        src={getImageUrl(s.image)}
+                        alt="Story"
+                        className="w-full h-32 object-cover rounded-lg mb-2"
+                        onError={handleImageError}
+                      />
                     ) : (
-                      <div className="flex items-center justify-between">
-                        <p className="text-orange-600 font-semibold text-lg">
-                          {formatPrice(getDiscountedPrice(selectedProduct.price_single || 0, selectedProduct.id))} Сом
-                          {discounts.some((d) => d.product_id === selectedProduct.id) && selectedProduct.price_single && (
-                            <span className="line-through text-gray-400 text-sm ml-2">
-                              {formatPrice(selectedProduct.price_single)}
-                            </span>
-                          )}
-                        </p>
-                        <button
-                          onClick={() => addToCart(selectedProduct)}
-                          className="py-2 px-6 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
-                        >
-                          В корзину
-                        </button>
+                      <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-lg">
+                        <span className="text-gray-500 text-sm">Нет изображения</span>
                       </div>
                     )}
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(s, setStory, resetStory)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Редактировать
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete("https://nukesul-brepb-651f.twc1.net/stories", s.id, setStories, stories)
+                        }
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            )}
-
-            {/* Cart Sidebar */}
-            {showCart && (
-              <div
-                className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center p-4 sm:p-6"
-                onClick={() => setShowCart(false)}
-              >
-                <div
-                  className="bg-white rounded-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-xl transform transition-all duration-300"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {!showCheckout ? (
-                    <>
-                      <div className="flex justify-between items-center p-6 border-b">
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Корзина</h2>
-                        <button onClick={() => setShowCart(false)} className="text-gray-600 hover:text-gray-800">
-                          ✕
-                        </button>
-                      </div>
-                      <div className="p-6 space-y-4">
-                        {cart.length === 0 ? (
-                          <p className="text-center text-gray-600">Корзина пуста</p>
-                        ) : (
-                          cart.map((item, index) => (
-                            <div key={index} className="flex items-center space-x-4 border-b pb-4">
-                              <img
-                                src={getImageUrl(item.image)}
-                                alt={item.name}
-                                className="w-16 h-16 object-cover rounded-lg"
-                              />
-                              <div className="flex-grow">
-                                <h4 className="text-sm sm:text-base font-medium text-gray-900">{item.name}</h4>
-                                {item.size && (
-                                  <p className="text-xs text-gray-500">
-                                    {item.size === "small" ? "Маленькая" : item.size === "medium" ? "Средняя" : "Большая"}
-                                  </p>
-                                )}
-                                <div className="flex items-center mt-2">
-                                  <button
-                                    onClick={() => updateQuantity(index, item.quantity - 1)}
-                                    className="w-8 h-8 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="mx-3 text-sm font-medium">{item.quantity}</span>
-                                  <button
-                                    onClick={() => updateQuantity(index, item.quantity + 1)}
-                                    className="w-8 h-8 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-orange-600 font-semibold">
-                                  {formatPrice(item.finalPrice * item.quantity)} Сом
-                                </p>
-                                <button
-                                  onClick={() => removeFromCart(index)}
-                                  className="text-red-500 hover:text-red-600 text-sm"
-                                >
-                                  Удалить
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      {cart.length > 0 && (
-                        <div className="p-6 border-t">
-                          <p className="text-lg font-semibold text-gray-900">
-                            Итого: {formatPrice(calculateSubtotal())} Сом
-                          </p>
-                          <button
-                            onClick={handleCheckout}
-                            className="w-full mt-4 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
-                          >
-                            Оформить заказ
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center p-6 border-b">
-                        <button onClick={() => setShowCheckout(false)} className="text-gray-600 hover:text-gray-800">
-                          ← Назад
-                        </button>
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Оформление</h2>
-                        <button onClick={() => setShowCart(false)} className="text-gray-600 hover:text-gray-800">
-                          ✕
-                        </button>
-                      </div>
-                      <div className="p-6 space-y-6">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">Способ получения</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div
-                              className={`p-4 border rounded-xl cursor-pointer ${
-                                deliveryOption === "pickup" ? "border-orange-500 bg-orange-50" : "border-gray-200"
-                              }`}
-                              onClick={() => {
-                                setDeliveryOption("pickup");
-                                setDeliveryCost(0);
-                              }}
-                            >
-                              <h4 className="font-medium">Самовывоз</h4>
-                              <p className="text-sm text-gray-600">Бесплатно</p>
-                            </div>
-                            <div
-                              className={`p-4 border rounded-xl cursor-pointer ${
-                                deliveryOption === "delivery" ? "border-orange-500 bg-orange-50" : "border-gray-200"
-                              }`}
-                              onClick={() => {
-                                setDeliveryOption("delivery");
-                                setDeliveryCost(200);
-                              }}
-                            >
-                              <h4 className="font-medium">Доставка</h4>
-                              <p className="text-sm text-gray-600">+200 Сом</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">Контактные данные</h3>
-                          <div className="space-y-4">
-                            <input
-                              type="text"
-                              placeholder="Ваше имя"
-                              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            <input
-                              type="tel"
-                              placeholder="Телефон"
-                              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            {deliveryOption === "delivery" && (
-                              <input
-                                type="text"
-                                placeholder="Адрес доставки"
-                                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-orange-500 focus:border-orange-500"
-                              />
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">Промокод</h3>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={promoCode}
-                              onChange={(e) => setPromoCode(e.target.value.toUpperCase().trim())}
-                              placeholder="Введите промокод"
-                              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            <button
-                              onClick={applyPromoCode}
-                              className="py-3 px-6 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition"
-                            >
-                              Применить
-                            </button>
-                          </div>
-                          {promoError && <p className="text-red-500 text-sm mt-2">{promoError}</p>}
-                          {promoDiscount > 0 && (
-                            <p className="text-green-500 text-sm mt-2">Скидка: {promoDiscount}%</p>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">Ваш заказ</h3>
-                          {cart.map((item) => (
-                            <div key={item.id} className="flex justify-between py-3 border-b">
-                              <span className="text-sm text-gray-800">
-                                {item.name} {item.size && `(${item.size})`} x{item.quantity}
-                              </span>
-                              <span className="text-sm text-orange-600 font-medium">
-                                {formatPrice(item.finalPrice * item.quantity)} Сом
-                              </span>
-                            </div>
-                          ))}
-                          <div className="mt-4 space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Сумма:</span>
-                              <span>{formatPrice(calculateSubtotal())} Сом</span>
-                            </div>
-                            {deliveryOption === "delivery" && (
-                              <div className="flex justify-between text-sm">
-                                <span>Доставка:</span>
-                                <span>{formatPrice(deliveryCost)} Сом</span>
-                              </div>
-                            )}
-                            {promoDiscount > 0 && (
-                              <div className="flex justify-between text-sm text-green-500">
-                                <span>Скидка:</span>
-                                <span>-{formatPrice(calculateSubtotal() * (promoDiscount / 100))} Сом</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-lg font-semibold">
-                              <span>Итого:</span>
-                              <span className="text-orange-600">
-                                {formatPrice(
-                                  calculateTotal() - (promoDiscount > 0 ? calculateSubtotal() * (promoDiscount / 100) : 0)
-                                )}{" "}
-                                Сом
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={handlePlaceOrder}
-                          className="w-full py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
-                        >
-                          Подтвердить заказ
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
+            </div>
+          </section>
         )}
       </main>
-      <Footer />
     </div>
   );
 };
 
-export default Home;
+export default Admin;
