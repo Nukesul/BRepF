@@ -34,8 +34,7 @@ const Home = () => {
         setDiscounts(responses[2]);
         setStories(responses[3]);
         setCategories(responses[4]);
-        // Устанавливаем branch_id = 5 для теста
-        setSelectedBranch(5);
+        setSelectedBranch(5); // Устанавливаем филиал "Араванский" для теста
       } catch (err) {
         setError("Не удалось загрузить данные: " + err.message);
       } finally {
@@ -56,16 +55,19 @@ const Home = () => {
   // Получение базовой цены
   const getBasePrice = (product, size = null) => {
     if (size) {
-      return parseFloat(product[`price_${size}`]) || 0;
+      const price = parseFloat(product[`price_${size}`]) || 0;
+      console.log(`Base Price for ${product.name} (${size}): ${price}`); // Дебаггинг
+      return price;
     }
-    // Берем минимальную доступную цену
     const prices = [
       parseFloat(product.price_small) || Infinity,
       parseFloat(product.price_medium) || Infinity,
       parseFloat(product.price_large) || Infinity,
       parseFloat(product.price_single) || Infinity,
     ].filter((p) => p !== Infinity);
-    return prices.length ? Math.min(...prices) : 0;
+    const minPrice = prices.length ? Math.min(...prices) : 0;
+    console.log(`Base Price for ${product.name} (default): ${minPrice}`); // Дебаггинг
+    return minPrice;
   };
 
   // Расчет цены со скидкой
@@ -74,7 +76,7 @@ const Home = () => {
     const discount = discounts.find((d) => d.product_id === product.id);
     const discountPercent = discount ? parseFloat(discount.discount_percent) || 0 : 0;
     const discountedPrice = basePrice * (1 - discountPercent / 100);
-    console.log(`Price for ${product.name} (${size || "default"}): Base=${basePrice}, Discounted=${discountedPrice}`); // Дебаггинг
+    console.log(`Discounted Price for ${product.name} (${size || "default"}): ${discountedPrice}`); // Дебаггинг
     return discountedPrice;
   };
 
@@ -118,6 +120,9 @@ const Home = () => {
             {/* Products */}
             {selectedBranch && (
               <section className="space-y-8">
+                <h2 className="text-3xl font-bold text-gray-900">
+                  {branches.find((b) => b.id === selectedBranch)?.name || "Филиал"}
+                </h2>
                 <div className="space-y-12">
                   {categories.map((category) => {
                     const categoryProducts = filteredProducts.filter((p) => p.category_id === category.id);
