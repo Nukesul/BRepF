@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'build', // Изменяем dist на build
+    outDir: 'build', // Changed from 'dist' to 'build'
     rollupOptions: {
       output: {
         assetFileNames: "assets/[name]-[hash][extname]",
