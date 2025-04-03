@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "rimraf build && vite build", 
+    "build": "rimraf build && vite build --logLevel info",
     "lint": "eslint .",
-    "preview": "vite preview --outDir build" 
+    "preview": "vite preview --outDir build"
   },
   "dependencies": {
     "react": "^18.2.0",
