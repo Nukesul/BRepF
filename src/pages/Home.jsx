@@ -201,7 +201,7 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans antialiased">
       <Header user={user} />
-      <main className="flex-grow max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+      <main className="flex-grow max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-orange-500"></div>
@@ -214,61 +214,39 @@ const Home = () => {
           <>
             {/* Stories */}
             {stories.length > 0 && (
-              <section className="space-y-6">
-                <h2 className="text-3xl font-bold text-gray-900 text-center">Акции</h2>
-                <div className="flex justify-center">
-                  <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide max-w-full px-2">
-                    {stories.map((story) => (
-                      <div
-                        key={story.id}
-                        className="group flex-shrink-0 cursor-pointer"
-                        onClick={() => setSelectedStory(story)}
-                      >
-                        <img
-                          src={getImageUrl(story.image)}
-                          alt={story.title}
-                          className="w-20 h-20 rounded-full object-cover border-2 border-orange-500 group-hover:scale-105 transition-transform duration-300 shadow-sm"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {selectedStory && (
+              <section className="best-sellers mb-12">
+                {stories.map((story) => (
                   <div
-                    className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 sm:p-6"
-                    onClick={() => setSelectedStory(null)}
+                    key={story.id}
+                    className="best-seller-product"
+                    onClick={() => setSelectedStory(story)}
                   >
-                    <div
-                      className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div
-                        className="absolute top-0 left-0 h-1 bg-orange-500"
-                        style={{ width: `${storyProgress}%`, transition: "width 0.1s linear" }}
-                      />
-                      <img
-                        src={getImageUrl(selectedStory.image)}
-                        alt={selectedStory.title}
-                        className="w-full h-[60vh] object-contain"
-                      />
-                      <button
-                        className="absolute top-3 right-3 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition"
-                        onClick={() => setSelectedStory(null)}
-                      >
+                    <img
+                      src={getImageUrl(story.image)}
+                      alt={story.title}
+                      className="best-seller-product-image"
+                    />
+                    <div className="best-seller-product-info">
+                      <h3 className="best-seller-product-title">{story.title}</h3>
+                    </div>
+                  </div>
+                ))}
+                {selectedStory && (
+                  <div className="modal see" onClick={() => setSelectedStory(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                      <button className="close-modal" onClick={() => setSelectedStory(null)}>
                         ✕
                       </button>
-                      <button
-                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
-                        onClick={handlePrevStory}
-                      >
-                        ❮
-                      </button>
-                      <button
-                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
-                        onClick={handleNextStory}
-                      >
-                        ❯
-                      </button>
+                      <div className="modal-body">
+                        <img
+                          src={getImageUrl(selectedStory.image)}
+                          alt={selectedStory.title}
+                          className="modal-image"
+                        />
+                        <div className="modal-info">
+                          <h1>{selectedStory.title}</h1>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -278,8 +256,8 @@ const Home = () => {
             {/* Branches */}
             {showBranchSelection && (
               <section className="space-y-6">
-                <h2 className="text-3xl font-bold text-gray-900 text-center">Выберите филиал</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <h2 className="Mark_Shop">Выберите филиал</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {branches.map((branch) => (
                     <button
                       key={branch.id}
@@ -296,100 +274,97 @@ const Home = () => {
             {/* Products */}
             {selectedBranch && (
               <section className="space-y-8">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex justify-between items-center mb-6">
                   <h2 className="text-3xl font-bold text-gray-900">
                     {branches.find((b) => b.id === selectedBranch)?.name}
                   </h2>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={handleBackToBranches}
-                      className="flex items-center text-gray-600 hover:text-orange-500 transition font-medium"
-                    >
-                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Назад
-                    </button>
-                    <button
-                      onClick={() => setShowCart(true)}
-                      className="relative text-gray-600 hover:text-orange-500 transition"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                        />
-                      </svg>
-                      {cart.length > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {cart.length}
-                        </span>
-                      )}
-                    </button>
+                  <button
+                    onClick={() => setShowCart(true)}
+                    className="relative text-gray-600 hover:text-orange-500 transition"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                    {cart.length > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {cart.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="option__container">
+                  <div className="option__name">
+                    <ul>
+                      {categories.map((category) => (
+                        <li key={category.id}>
+                          <a
+                            href={`#${category.id}`}
+                            className={activeCategory === category.id ? "active" : ""}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              scrollToCategory(category.id);
+                            }}
+                          >
+                            {category.name}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
 
-                <div className="flex space-x-2 overflow-x-auto pb-4 scrollbar-hide">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => scrollToCategory(category.id)}
-                      className={`py-2 px-6 rounded-full text-sm font-bold transition-all ${
-                        activeCategory === category.id
-                          ? "bg-orange-500 text-white shadow-md"
-                          : "bg-gray-100 text-gray-700 hover:bg-orange-100"
-                      }`}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="space-y-12">
+                <div className="menu-items">
                   {categories.map((category) => {
                     const categoryProducts = filteredProducts.filter((p) => p.category_id === category.id);
                     if (!categoryProducts.length) return null;
                     return (
-                      <div key={category.id} ref={(el) => (categoriesRef.current[category.id] = el)}>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6">{category.name}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div
+                        key={category.id}
+                        className="menu-category"
+                        id={category.id}
+                        ref={(el) => (categoriesRef.current[category.id] = el)}
+                      >
+                        <h3 className="menu-category-title">{category.name}</h3>
+                        <div className="menu-products">
                           {categoryProducts.map((product) => (
                             <div
                               key={product.id}
-                              className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
+                              className="menu-product"
                               onClick={() => setSelectedProduct(product)}
                             >
-                              <div className="relative overflow-hidden rounded-t-xl">
-                                <img
-                                  src={getImageUrl(product.image)}
-                                  alt={product.name}
-                                  className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                              </div>
-                              <div className="p-4">
-                                <h4 className="text-lg font-bold text-gray-900">{product.name}</h4>
-                                <p className="text-sm text-gray-500 line-clamp-2">{product.description || "Нет описания"}</p>
-                                <div className="mt-3 flex items-center justify-between">
-                                  <p className="text-orange-500 font-bold text-lg">
-                                    {formatPrice(getDiscountedPrice(product.price_single || 0, product.id))} Сом
-                                    {discounts.some((d) => d.product_id === product.id) && product.price_single && (
-                                      <span className="line-through text-gray-400 text-sm ml-2">
-                                        {formatPrice(product.price_single)}
-                                      </span>
-                                    )}
-                                  </p>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addToCart(product);
-                                    }}
-                                    className="py-2 px-4 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition font-bold"
-                                  >
-                                    В корзину
-                                  </button>
-                                </div>
+                              <img
+                                src={getImageUrl(product.image)}
+                                alt={product.name}
+                                className="menu-product-image"
+                              />
+                              <div className="menu-product-info">
+                                <h4 className="menu-product-title">{product.name}</h4>
+                                <p className="menu-product-description">
+                                  {product.description || "Нет описания"}
+                                </p>
+                                <p className="menu-product-price">
+                                  {formatPrice(getDiscountedPrice(product.price_single || 0, product.id))} Сом
+                                  {discounts.some((d) => d.product_id === product.id) && product.price_single && (
+                                    <span className="line-through text-gray-400 text-sm ml-2">
+                                      {formatPrice(product.price_single)}
+                                    </span>
+                                  )}
+                                </p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addToCart(product);
+                                  }}
+                                  className="menu-add-to-cart"
+                                >
+                                  В корзину
+                                </button>
                               </div>
                             </div>
                           ))}
@@ -403,69 +378,51 @@ const Home = () => {
 
             {/* Product Modal */}
             {selectedProduct && (
-              <div
-                className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6"
-                onClick={() => setSelectedProduct(null)}
-              >
-                <div
-                  className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="relative">
+              <div className="modal see" onClick={() => setSelectedProduct(null)}>
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                  <button className="close-modal" onClick={() => setSelectedProduct(null)}>
+                    ✕
+                  </button>
+                  <div className="modal-body">
                     <img
                       src={getImageUrl(selectedProduct.image)}
                       alt={selectedProduct.name}
-                      className="w-full h-64 object-cover rounded-t-2xl"
+                      className="modal-image"
                     />
-                    <button
-                      className="absolute top-3 right-3 bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition"
-                      onClick={() => setSelectedProduct(null)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <h3 className="text-2xl font-bold text-gray-900">{selectedProduct.name}</h3>
-                    <p className="text-gray-500 text-base">{selectedProduct.description || "Нет описания"}</p>
-                    {selectedProduct.price_small || selectedProduct.price_medium || selectedProduct.price_large ? (
-                      <div className="space-y-3">
-                        {["small", "medium", "large"].map(
-                          (size) =>
-                            selectedProduct[`price_${size}`] && (
-                              <button
-                                key={size}
-                                onClick={() => addToCart(selectedProduct, size)}
-                                className="w-full py-3 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition flex justify-between items-center px-6 font-bold"
-                              >
-                                <span>
-                                  {size === "small" ? "Маленькая" : size === "medium" ? "Средняя" : "Большая"}
-                                </span>
-                                <span>
-                                  {formatPrice(getDiscountedPrice(selectedProduct[`price_${size}`] || 0, selectedProduct.id))}{" "}
-                                  Сом
-                                </span>
-                              </button>
-                            )
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <p className="text-orange-500 font-bold text-lg">
-                          {formatPrice(getDiscountedPrice(selectedProduct.price_single || 0, selectedProduct.id))} Сом
-                          {discounts.some((d) => d.product_id === selectedProduct.id) && selectedProduct.price_single && (
-                            <span className="line-through text-gray-400 text-sm ml-2">
-                              {formatPrice(selectedProduct.price_single)}
-                            </span>
-                          )}
-                        </p>
-                        <button
-                          onClick={() => addToCart(selectedProduct)}
-                          className="py-2 px-6 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition font-bold"
-                        >
-                          В корзину
+                    <div className="modal-info">
+                      <h1>{selectedProduct.name}</h1>
+                      <p>{selectedProduct.description || "Нет описания"}</p>
+                      {selectedProduct.price_small || selectedProduct.price_medium || selectedProduct.price_large ? (
+                        <div className="pizza-selection">
+                          <h3>Выберите размер:</h3>
+                          <div className="pizza-sizes">
+                            {["small", "medium", "large"].map(
+                              (size) =>
+                                selectedProduct[`price_${size}`] && (
+                                  <div
+                                    key={size}
+                                    className={`pizza-size ${selectedProduct.size === size ? "selected" : ""}`}
+                                    onClick={() => addToCart(selectedProduct, size)}
+                                  >
+                                    {size === "small" ? "Маленькая" : size === "medium" ? "Средняя" : "Большая"}
+                                    <span>
+                                      {formatPrice(getDiscountedPrice(selectedProduct[`price_${size}`], selectedProduct.id))} Сом
+                                    </span>
+                                  </div>
+                                )
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <button className="add-to-cart" onClick={() => addToCart(selectedProduct)}>
+                          Добавить в корзину за{" "}
+                          <span className="green-price">
+                            {formatPrice(getDiscountedPrice(selectedProduct.price_single || 0, selectedProduct.id))}
+                          </span>{" "}
+                          Сом
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -473,19 +430,13 @@ const Home = () => {
 
             {/* Cart Sidebar */}
             {showCart && (
-              <div
-                className="fixed inset-0 bg-black/40 z-50 flex justify-center items-center p-4 sm:p-6"
-                onClick={() => setShowCart(false)}
-              >
-                <div
-                  className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <div className="modal see" onClick={() => setShowCart(false)}>
+                <div className="modal-content order-page" onClick={(e) => e.stopPropagation()}>
                   {!showCheckout ? (
                     <>
                       <div className="flex justify-between items-center p-6 border-b">
                         <h2 className="text-2xl font-bold text-gray-900">Корзина</h2>
-                        <button onClick={() => setShowCart(false)} className="text-gray-600 hover:text-orange-500">
+                        <button onClick={() => setShowCart(false)} className="close-modal">
                           ✕
                         </button>
                       </div>
@@ -494,45 +445,31 @@ const Home = () => {
                           <p className="text-center text-gray-600 font-medium">Корзина пуста</p>
                         ) : (
                           cart.map((item, index) => (
-                            <div key={index} className="flex items-center space-x-4 border-b pb-4">
+                            <div key={index} className="order-item">
                               <img
                                 src={getImageUrl(item.image)}
                                 alt={item.name}
                                 className="w-16 h-16 object-cover rounded-lg"
                               />
-                              <div className="flex-grow">
-                                <h4 className="text-base font-bold text-gray-900">{item.name}</h4>
-                                {item.size && (
-                                  <p className="text-sm text-gray-500">
-                                    {item.size === "small" ? "Маленькая" : item.size === "medium" ? "Средняя" : "Большая"}
-                                  </p>
-                                )}
-                                <div className="flex items-center mt-2">
+                              <div className="order-item-info">
+                                <h3>{item.name}</h3>
+                                {item.size && <p>{item.size}</p>}
+                                <p>{formatPrice(item.finalPrice * item.quantity)} Сом</p>
+                                <div className="ad_more">
                                   <button
+                                    className="quantity-button"
                                     onClick={() => updateQuantity(index, item.quantity - 1)}
-                                    className="w-8 h-8 bg-gray-100 rounded-full text-gray-600 hover:bg-orange-100 transition"
                                   >
                                     -
                                   </button>
-                                  <span className="mx-3 text-base font-medium">{item.quantity}</span>
+                                  <span className="quantity-display">{item.quantity}</span>
                                   <button
+                                    className="quantity-button"
                                     onClick={() => updateQuantity(index, item.quantity + 1)}
-                                    className="w-8 h-8 bg-gray-100 rounded-full text-gray-600 hover:bg-orange-100 transition"
                                   >
                                     +
                                   </button>
                                 </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-orange-500 font-bold">
-                                  {formatPrice(item.finalPrice * item.quantity)} Сом
-                                </p>
-                                <button
-                                  onClick={() => removeFromCart(index)}
-                                  className="text-red-500 hover:text-red-600 text-sm font-medium"
-                                >
-                                  Удалить
-                                </button>
                               </div>
                             </div>
                           ))
@@ -540,13 +477,10 @@ const Home = () => {
                       </div>
                       {cart.length > 0 && (
                         <div className="p-6 border-t">
-                          <p className="text-lg font-bold text-gray-900">
+                          <h3 className="total-price">
                             Итого: {formatPrice(calculateSubtotal())} Сом
-                          </p>
-                          <button
-                            onClick={handleCheckout}
-                            className="w-full mt-4 py-3 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition font-bold"
-                          >
+                          </h3>
+                          <button className="confirm-button" onClick={handleCheckout}>
                             Оформить заказ
                           </button>
                         </div>
@@ -559,125 +493,72 @@ const Home = () => {
                           ← Назад
                         </button>
                         <h2 className="text-2xl font-bold text-gray-900">Оформление</h2>
-                        <button onClick={() => setShowCart(false)} className="text-gray-600 hover:text-orange-500">
+                        <button onClick={() => setShowCart(false)} className="close-modal">
                           ✕
                         </button>
                       </div>
                       <div className="p-6 space-y-6">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-3">Способ получения</h3>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div
-                              className={`p-4 border rounded-xl cursor-pointer ${
-                                deliveryOption === "pickup" ? "border-orange-500 bg-orange-50" : "border-gray-200"
-                              }`}
-                              onClick={() => {
-                                setDeliveryOption("pickup");
-                                setDeliveryCost(0);
-                              }}
-                            >
-                              <h4 className="font-bold text-gray-900">Самовывоз</h4>
-                              <p className="text-sm text-gray-500">Бесплатно</p>
-                            </div>
-                            <div
-                              className={`p-4 border rounded-xl cursor-pointer ${
-                                deliveryOption === "delivery" ? "border-orange-500 bg-orange-50" : "border-gray-200"
-                              }`}
-                              onClick={() => {
-                                setDeliveryOption("delivery");
-                                setDeliveryCost(200);
-                              }}
-                            >
-                              <h4 className="font-bold text-gray-900">Доставка</h4>
-                              <p className="text-sm text-gray-500">+200 Сом</p>
-                            </div>
-                          </div>
+                        <div className="button-group">
+                          <button
+                            className={`button_buy ${deliveryOption === "pickup" ? "active" : ""}`}
+                            onClick={() => {
+                              setDeliveryOption("pickup");
+                              setDeliveryCost(0);
+                            }}
+                          >
+                            Самовывоз
+                          </button>
+                          <button
+                            className={`button_buy ${deliveryOption === "delivery" ? "active" : ""}`}
+                            onClick={() => {
+                              setDeliveryOption("delivery");
+                              setDeliveryCost(200);
+                            }}
+                          >
+                            Доставка
+                          </button>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-3">Контактные данные</h3>
-                          <div className="space-y-4">
-                            <input
-                              type="text"
-                              placeholder="Ваше имя"
-                              className="w-full p-3 border border-gray-200 rounded-full focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            <input
-                              type="tel"
-                              placeholder="Телефон"
-                              className="w-full p-3 border border-gray-200 rounded-full focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            {deliveryOption === "delivery" && (
+                        <div className="order-details">
+                          <div className="input-group">
+                            <label>Имя:</label>
+                            <input type="text" placeholder="Ваше имя" className="w-full p-3 rounded-full border border-gray-200" />
+                          </div>
+                          <div className="input-group">
+                            <label>Телефон:</label>
+                            <input type="tel" placeholder="Телефон" className="w-full p-3 rounded-full border border-gray-200" />
+                          </div>
+                          {deliveryOption === "delivery" && (
+                            <div className="input-group">
+                              <label>Адрес:</label>
+                              <input type="text" placeholder="Адрес доставки" className="w-full p-3 rounded-full border border-gray-200" />
+                            </div>
+                          )}
+                          <div className="input-group">
+                            <label>Промокод:</label>
+                            <div className="flex gap-2">
                               <input
                                 type="text"
-                                placeholder="Адрес доставки"
-                                className="w-full p-3 border border-gray-200 rounded-full focus:ring-orange-500 focus:border-orange-500"
+                                value={promoCode}
+                                onChange={(e) => setPromoCode(e.target.value.toUpperCase().trim())}
+                                placeholder="Введите промокод"
+                                className="w-full p-3 rounded-full border border-gray-200"
                               />
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-3">Промокод</h3>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={promoCode}
-                              onChange={(e) => setPromoCode(e.target.value.toUpperCase().trim())}
-                              placeholder="Введите промокод"
-                              className="w-full p-3 border border-gray-200 rounded-full focus:ring-orange-500 focus:border-orange-500"
-                            />
-                            <button
-                              onClick={applyPromoCode}
-                              className="py-3 px-6 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition font-bold"
-                            >
-                              Применить
-                            </button>
-                          </div>
-                          {promoError && <p className="text-red-500 text-sm mt-2">{promoError}</p>}
-                          {promoDiscount > 0 && (
-                            <p className="text-green-500 text-sm mt-2">Скидка: {promoDiscount}%</p>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-3">Ваш заказ</h3>
-                          {cart.map((item) => (
-                            <div key={item.id} className="flex justify-between py-3 border-b">
-                              <span className="text-sm text-gray-800 font-medium">
-                                {item.name} {item.size && `(${item.size})`} x{item.quantity}
-                              </span>
-                              <span className="text-sm text-orange-500 font-bold">
-                                {formatPrice(item.finalPrice * item.quantity)} Сом
-                              </span>
+                              <button className="add-to-cart" onClick={applyPromoCode}>
+                                Применить
+                              </button>
                             </div>
-                          ))}
-                          <div className="mt-4 space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>Сумма:</span>
-                              <span>{formatPrice(calculateSubtotal())} Сом</span>
-                            </div>
-                            {deliveryOption === "delivery" && (
-                              <div className="flex justify-between text-sm">
-                                <span>Доставка:</span>
-                                <span>{formatPrice(deliveryCost)} Сом</span>
-                              </div>
-                            )}
-                            {promoDiscount > 0 && (
-                              <div className="flex justify-between text-sm text-green-500">
-                                <span>Скидка:</span>
-                                <span>-{formatPrice(calculateSubtotal() * (promoDiscount / 100))} Сом</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between text-lg font-bold">
-                              <span>Итого:</span>
-                              <span className="text-orange-500">{formatPrice(calculateTotal())} Сом</span>
-                            </div>
+                            {promoError && <p className="error">{promoError}</p>}
+                            {promoDiscount > 0 && <p className="text-green-500">Скидка: {promoDiscount}%</p>}
                           </div>
+                          <div className="total-section">
+                            <h3 className="total-price">
+                              Итого: <span className="discounted-total-price">{formatPrice(calculateTotal())} Сом</span>
+                            </h3>
+                          </div>
+                          <button className="confirm-button" onClick={handlePlaceOrder}>
+                            Подтвердить заказ
+                          </button>
                         </div>
-                        <button
-                          onClick={handlePlaceOrder}
-                          className="w-full py-3 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition font-bold"
-                        >
-                          Подтвердить заказ
-                        </button>
                       </div>
                     </>
                   )}
