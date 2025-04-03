@@ -52,7 +52,7 @@ const Home = () => {
     }
   }, [selectedBranch, allProducts]);
 
-  // Получение базовой цены
+  // Получение минимальной базовой цены
   const getBasePrice = (product, size = null) => {
     if (size) {
       const price = parseFloat(product[`price_${size}`]) || 0;
@@ -66,7 +66,7 @@ const Home = () => {
       parseFloat(product.price_single) || Infinity,
     ].filter((p) => p !== Infinity);
     const minPrice = prices.length ? Math.min(...prices) : 0;
-    console.log(`Base Price for ${product.name} (default): ${minPrice}`); // Дебаггинг
+    console.log(`Min Base Price for ${product.name}: ${minPrice}`); // Дебаггинг
     return minPrice;
   };
 
@@ -76,7 +76,7 @@ const Home = () => {
     const discount = discounts.find((d) => d.product_id === product.id);
     const discountPercent = discount ? parseFloat(discount.discount_percent) || 0 : 0;
     const discountedPrice = basePrice * (1 - discountPercent / 100);
-    console.log(`Discounted Price for ${product.name} (${size || "default"}): ${discountedPrice}`); // Дебаггинг
+    console.log(`Discounted Price for ${product.name} (${size || "min"}): ${discountedPrice}`); // Дебаггинг
     return discountedPrice;
   };
 
