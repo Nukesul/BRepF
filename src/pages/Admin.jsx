@@ -54,9 +54,10 @@ const Home = () => {
 
   // Получение минимальной базовой цены
   const getBasePrice = (product, size = null) => {
+    console.log("Product for pricing:", product); // Дебаггинг
     if (size) {
       const price = parseFloat(product[`price_${size}`]) || 0;
-      console.log(`Base Price for ${product.name} (${size}): ${price}`); // Дебаггинг
+      console.log(`Base Price for ${product.name} (${size}): ${price}`);
       return price;
     }
     const prices = [
@@ -64,9 +65,9 @@ const Home = () => {
       parseFloat(product.price_medium) || Infinity,
       parseFloat(product.price_large) || Infinity,
       parseFloat(product.price_single) || Infinity,
-    ].filter((p) => p !== Infinity);
+    ].filter((p) => p !== Infinity && !isNaN(p));
     const minPrice = prices.length ? Math.min(...prices) : 0;
-    console.log(`Min Base Price for ${product.name}: ${minPrice}`); // Дебаггинг
+    console.log(`Min Base Price for ${product.name}: ${minPrice}, Available Prices: ${prices}`);
     return minPrice;
   };
 
@@ -76,13 +77,13 @@ const Home = () => {
     const discount = discounts.find((d) => d.product_id === product.id);
     const discountPercent = discount ? parseFloat(discount.discount_percent) || 0 : 0;
     const discountedPrice = basePrice * (1 - discountPercent / 100);
-    console.log(`Discounted Price for ${product.name} (${size || "min"}): ${discountedPrice}`); // Дебаггинг
+    console.log(`Discounted Price for ${product.name} (${size || "min"}): ${discountedPrice}, Discount: ${discountPercent}%`);
     return discountedPrice;
   };
 
   const formatPrice = (price) => {
     const formatted = parseFloat(price || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    console.log("Formatted Price:", formatted); // Дебаггинг
+    console.log("Formatted Price:", formatted);
     return formatted;
   };
 
