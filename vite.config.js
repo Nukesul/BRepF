@@ -1,7 +1,10 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'dist',
+    outDir: 'build', // Изменяем dist на build
     rollupOptions: {
       output: {
         assetFileNames: "assets/[name]-[hash][extname]",
