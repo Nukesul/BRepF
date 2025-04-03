@@ -3,13 +3,15 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 const Home = () => {
+  const [branches, setBranches] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [discounts, setDiscounts] = useState([]);
+  const [stories, setStories] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cart, setCart] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const categoriesRef = useRef({});
@@ -27,13 +29,15 @@ const Home = () => {
             })
           )
         );
+        setBranches(responses[0]);
         setAllProducts(responses[1]);
         setDiscounts(responses[2]);
+        setStories(responses[3]);
         setCategories(responses[4]);
-        // Для примера установим branch_id = 5, чтобы отфильтровать продукты
+        // Устанавливаем branch_id = 5 для теста
         setSelectedBranch(5);
       } catch (err) {
-        setError("Не удалось загрузить данные.");
+        setError("Не удалось загрузить данные: " + err.message);
       } finally {
         setLoading(false);
       }
@@ -42,21 +46,26 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedBranch) {
+    if (selectedBranch && allProducts.length) {
       const branchProducts = allProducts.filter((product) => product.branch_id === selectedBranch);
       setFilteredProducts(branchProducts);
+      console.log("Filtered Products:", branchProducts); // Дебаггинг
     }
   }, [selectedBranch, allProducts]);
 
   // Получение базовой цены
   const getBasePrice = (product, size = null) => {
     if (size) {
-      return parseFloat(product[`price_${size}`] || 0);
+      return parseFloat(product[`price_${size}`]) || 0;
     }
-    // Берем минимальную цену из доступных
-    return (
-      parseFloat(product.price_small || product.price_medium || product.price_large || product.price_single || 0)
-    );
+    // Берем минимальную доступную цену
+    const prices = [
+      parseFloat(product.price_small) || Infinity,
+      parseFloat(product.price_medium) || Infinity,
+      parseFloat(product.price_large) || Infinity,
+      parseFloat(product.price_single) || Infinity,
+    ].filter((p) => p !== Infinity);
+    return prices.length ? Math.min(...prices) : 0;
   };
 
   // Расчет цены со скидкой
@@ -64,10 +73,16 @@ const Home = () => {
     const basePrice = getBasePrice(product, size);
     const discount = discounts.find((d) => d.product_id === product.id);
     const discountPercent = discount ? parseFloat(discount.discount_percent) || 0 : 0;
-    return basePrice * (1 - discountPercent / 100);
+    const discountedPrice = basePrice * (1 - discountPercent / 100);
+    console.log(`Price for ${product.name} (${size || "default"}): Base=${basePrice}, Discounted=${discountedPrice}`); // Дебаггинг
+    return discountedPrice;
   };
 
-  const formatPrice = (price) => parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const formatPrice = (price) => {
+    const formatted = parseFloat(price || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    console.log("Formatted Price:", formatted); // Дебаггинг
+    return formatted;
+  };
 
   const addToCart = (product, size = null) => {
     const price = getBasePrice(product, size);
@@ -95,9 +110,9 @@ const Home = () => {
       <Header />
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
         {loading ? (
-          <div>Loading...</div>
+          <div className="flex justify-center items-center h-64">Загрузка...</div>
         ) : error ? (
-          <div>{error}</div>
+          <div className="text-center py-12 bg-white rounded-xl shadow-md text-red-600">{error}</div>
         ) : (
           <>
             {/* Products */}
@@ -123,6 +138,11 @@ const Home = () => {
                                   alt={product.name}
                                   className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500"
                                 />
+                                {discounts.some((d) => d.product_id === product.id) && (
+                                  <span className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                    Скидка
+                                  </span>
+                                )}
                               </div>
                               <div className="p-4">
                                 <h4 className="text-lg font-bold text-gray-900">{product.name}</h4>
